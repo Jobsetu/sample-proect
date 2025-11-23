@@ -1,0 +1,49 @@
+\documentclass[11pt,a4paper,sans]{moderncv}
+
+% modern themes
+\moderncvstyle{classic}
+\moderncvcolor{blue}
+
+% character encoding
+\usepackage[utf8]{inputenc}
+
+% adjust the page margins
+\usepackage[scale=0.85]{geometry}
+
+% personal data
+\name{<<NAME>>}
+\title{<<TITLE>>}
+\address{<<ADDRESS>>}
+\phone[mobile]{<<PHONE>>}
+\email{<<EMAIL>>}
+\social[linkedin]{<<LINKEDIN>>}
+\social[github]{<<GITHUB>>}
+
+\begin{document}
+
+% make the title
+\makecvtitle
+
+% objective/summary
+\section{Summary}
+\cvitem{}{<<SUMMARY>>}
+
+% skills
+\section{Technical Skills}
+\cvitem{Languages}{<<LANGUAGES>>}
+\cvitem{Frameworks \& Libraries}{<<FRAMEWORKS>>}
+\cvitem{Tools \& Technologies}{<<TOOLS>>}
+
+% experience
+\section{Professional Experience}
+<<EXPERIENCE>>
+
+% education
+\section{Education}
+<<EDUCATION>>
+
+% projects
+\section{Projects}
+<<PROJECTS>>
+
+\end{document}

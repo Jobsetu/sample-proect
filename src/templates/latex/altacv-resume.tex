@@ -1,0 +1,71 @@
+\documentclass[10pt,a4paper,ragged2e,withhyper]{altacv}
+
+% Change the page layout if you need to
+\geometry{left=1.25cm,right=1.25cm,top=1.5cm,bottom=1.5cm,columnsep=1.2cm}
+
+% The paracol package lets you typeset columns of text in parallel or side-by-side
+\usepackage{paracol}
+
+% Change the font if you want to
+\renewcommand{\familydefault}{\sfdefault}
+
+% Change the colours if you want to
+\definecolor{SlateGrey}{HTML}{2E2E2E}
+\definecolor{LightGrey}{HTML}{666666}
+\definecolor{DarkPastelRed}{HTML}{450808}
+\definecolor{PastelRed}{HTML}{8F0000}
+\definecolor{Goldenrod}{HTML}{DAA520}
+\definecolor{DarkGoldenrod}{HTML}{B8860B}
+\colorlet{name}{black}
+\colorlet{tagline}{PastelRed}
+\colorlet{heading}{DarkPastelRed}
+\colorlet{headingrule}{Goldenrod}
+\colorlet{personalinfo}{SlateGrey}
+\colorlet{secondaryheading}{SlateGrey}
+\colorlet{accent}{PastelRed}
+\colorlet{emphasis}{SlateGrey}
+\colorlet{body}{LightGrey}
+
+% Change some fonts, if necessary
+\renewcommand{\namefont}{\Huge\rmfamily\bfseries}
+\renewcommand{\personalinfofont}{\footnotesize}
+\renewcommand{\cvsectionfont}{\LARGE\rmfamily\slshape}
+\renewcommand{\cvsubsectionfont}{\large\bfseries}
+
+% Change the bullets for itemize and rating marker
+\renewcommand{\itemmarker}{{\small\textbullet}}
+\renewcommand{\ratingmarker}{\faCircle}
+
+\begin{document}
+
+\name{<<NAME>>}
+\tagline{<<TITLE>>}
+
+\personalinfo{%
+  \email{<<EMAIL>>}
+  \phone{<<PHONE>>}
+  \location{<<LOCATION>>}
+  \linkedin{<<LINKEDIN>>}
+  \github{<<GITHUB>>}
+}
+
+\makecvheader
+
+\cvsection{Summary}
+<<SUMMARY>>
+
+\cvsection{Technical Skills}
+\cvskill{Languages}{<<LANGUAGES>>}
+\cvskill{Frameworks \& Libraries}{<<FRAMEWORKS>>}
+\cvskill{Tools \& Technologies}{<<TOOLS>>}
+
+\cvsection{Professional Experience}
+<<EXPERIENCE>>
+
+\cvsection{Education}
+<<EDUCATION>>
+
+\cvsection{Projects}
+<<PROJECTS>>
+
+\end{document}

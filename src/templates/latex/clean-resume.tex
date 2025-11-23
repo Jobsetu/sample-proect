@@ -1,0 +1,68 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[margin=0.75in]{geometry}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{fontawesome}
+
+% Custom colors
+\definecolor{primary}{RGB}{0,102,204}
+\definecolor{secondary}{RGB}{102,102,102}
+
+% Remove page numbers
+\pagestyle{empty}
+
+% Custom section formatting
+\titleformat{\section}{\large\bfseries\color{primary}}{}{0em}{}[\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{}
+\titleformat{\subsubsection}{\small\bfseries\color{secondary}}{}{0em}{}
+
+% Custom spacing
+\titlespacing*{\section}{0pt}{12pt}{6pt}
+\titlespacing*{\subsection}{0pt}{8pt}{4pt}
+\titlespacing*{\subsubsection}{0pt}{6pt}{3pt}
+
+% Custom list formatting
+\setlist[itemize]{leftmargin=*,topsep=0pt,itemsep=0pt,parsep=0pt}
+
+\begin{document}
+
+% Header
+\begin{center}
+    {\Huge\bfseries\color{primary}<<NAME>>}\\[0.5em]
+    {\large\color{secondary}<<TITLE>>}\\[0.5em]
+    \faPhone\ <<PHONE>> \quad
+    \faEnvelope\ \href{mailto:<<EMAIL>>}{<<EMAIL>>} \quad
+    \faLinkedin\ \href{https://linkedin.com/in/<<LINKEDIN>>}{<<LINKEDIN>>} \quad
+    \faGithub\ \href{https://github.com/<<GITHUB>>}{<<GITHUB>>}
+\end{center}
+
+\vspace{0.5em}
+
+% Summary
+\section{Summary}
+<<SUMMARY>>
+
+% Skills
+\section{Technical Skills}
+\textbf{Languages:} <<LANGUAGES>>\\[0.3em]
+\textbf{Frameworks \& Libraries:} <<FRAMEWORKS>>\\[0.3em]
+\textbf{Tools \& Technologies:} <<TOOLS>>
+
+% Experience
+\section{Professional Experience}
+<<EXPERIENCE>>
+
+% Education
+\section{Education}
+<<EDUCATION>>
+
+% Projects
+\section{Projects}
+<<PROJECTS>>
+
+\end{document}

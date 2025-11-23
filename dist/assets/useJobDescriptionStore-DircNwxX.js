@@ -1,0 +1,3 @@
+import{c as r,p as s}from"./index-CNhrLBlN.js";const a=r(s((i,e)=>({jobDescription:"",jobTitle:"",company:"",lastUpdated:null,setJobDescription:(o,t="",n="")=>{i({jobDescription:o,jobTitle:t,company:n,lastUpdated:new Date().toISOString()})},clearJobDescription:()=>{i({jobDescription:"",jobTitle:"",company:"",lastUpdated:null})},getFormattedJobDescription:()=>{const o=e();if(!o.jobDescription)return"";let t="";return o.jobTitle&&o.company&&(t+=`Position: ${o.jobTitle} at ${o.company}
+
+`),t+=o.jobDescription,t},hasJobDescription:()=>!!e().jobDescription&&e().jobDescription.trim().length>0}),{name:"job-description-storage",version:1}));export{a as useJobDescriptionStore};
