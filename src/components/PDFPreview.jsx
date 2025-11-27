@@ -12,7 +12,7 @@ const PDFPreview = () => {
   const template = resume.template || 'classic'
 
   return (
-    <div className="w-full h-full border border-slate-200 rounded-lg overflow-hidden bg-slate-500/10">
+    <div className="w-full h-full overflow-hidden bg-slate-200">
       <PDFViewer style={{ width: '100%', height: '100%', border: 'none' }} showToolbar={true}>
         <ResumeDocument resume={resume} template={template} />
       </PDFViewer>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Upload, FileText, BarChart2, CheckCircle, AlertCircle, Loader, Trash2, Lightbulb, TrendingUp, Star, Eye, EyeOff, PenTool, Briefcase, User, Settings } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels'
 import { ResumeService } from '../lib/resumeService'
 import { GeminiService } from '../lib/geminiService'
 import { useAuth } from '../contexts/AuthContext'
@@ -277,7 +278,7 @@ const ResumePage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-dark-900 flex flex-col overflow-hidden">
+    <div className="h-screen bg-dark-900 flex flex-col overflow-hidden">
       {/* Header */}
       <motion.header
         initial={{ y: -100 }}
@@ -998,14 +999,25 @@ const ResumePage = () => {
                 <ExportButtons />
               </div>
 
-              {/* Two Panel Layout - Using Standard Flexbox instead of Resizable Panels for reliability */}
-              <div className="flex-1 relative overflow-hidden h-full flex flex-row">
-                <div className="w-1/2 h-full overflow-y-auto p-5 pb-20 bg-slate-50 border-r border-slate-200">
-                  <EditorPanel />
-                </div>
-                <div className="w-1/2 h-full p-6 overflow-hidden flex flex-col bg-slate-100">
-                  <PDFPreview />
-                </div>
+              {/* Resizable Panels Layout */}
+              <div className="flex-1 relative overflow-hidden h-full">
+                <PanelGroup direction="horizontal" className="h-full">
+                  <Panel defaultSize={50} minSize={30} className="h-full">
+                    <div className="h-full overflow-y-auto p-5 pb-20 bg-slate-50 border-r border-slate-200">
+                      <EditorPanel />
+                    </div>
+                  </Panel>
+
+                  <PanelResizeHandle className="w-1.5 bg-slate-200 hover:bg-primary-400 transition-colors cursor-col-resize flex items-center justify-center z-10">
+                    <div className="w-0.5 h-8 bg-slate-400 rounded-full" />
+                  </PanelResizeHandle>
+
+                  <Panel defaultSize={50} minSize={30} className="h-full">
+                    <div className="h-full overflow-hidden flex flex-col bg-slate-100">
+                      <PDFPreview />
+                    </div>
+                  </Panel>
+                </PanelGroup>
               </div>
             </div>
           )}
