@@ -6,14 +6,32 @@ export class UserService {
    */
   static async getUserProfile(userId) {
     try {
-      // Get user basic info
-      const { data: user, error: userError } = await supabase
+      // Get user basic info from Auth (source of truth for metadata)
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser()
+      if (authError) throw authError
+
+      // Get user info from DB (if exists)
+      const { data: dbUser, error: userError } = await supabase
         .from('Users')
         .select('*')
         .eq('id', userId)
         .single()
 
-      if (userError) throw userError
+      if (userError && userError.code !== 'PGRST116') throw userError
+
+      // Merge DB data with Auth metadata
+      // Auth metadata takes precedence for fields that might be missing in DB schema
+      const user = {
+        ...dbUser,
+        email: authUser.email,
+        full_name: dbUser?.full_name || authUser.user_metadata?.full_name,
+        phone: dbUser?.phone || authUser.user_metadata?.phone,
+        current_city: dbUser?.current_city || authUser.user_metadata?.current_city,
+        education_level: dbUser?.education_level || authUser.user_metadata?.education_level,
+        experience_level: dbUser?.experience_level || authUser.user_metadata?.experience_level,
+        linkedin_url: dbUser?.linkedin_url || authUser.user_metadata?.linkedin_url,
+        github_url: dbUser?.github_url || authUser.user_metadata?.github_url,
+      }
 
       // Get user skills
       const { data: skills, error: skillsError } = await supabase
@@ -30,7 +48,7 @@ export class UserService {
         .eq('user_id', userId)
         .single()
 
-      if (preferencesError) console.warn('Error fetching preferences:', preferencesError)
+      if (preferencesError && preferencesError.code !== 'PGRST116') console.warn('Error fetching preferences:', preferencesError)
 
       // Get user resumes
       const { data: resumes, error: resumesError } = await supabase
@@ -42,7 +60,7 @@ export class UserService {
       if (resumesError) console.warn('Error fetching resumes:', resumesError)
 
       return {
-        user,
+        user: user || {},
         skills: skills || [],
         preferences: preferences || {},
         resumes: resumes || []
@@ -58,14 +76,43 @@ export class UserService {
    */
   static async updateUserProfile(userId, profileData) {
     try {
+      // 1. Update Auth Metadata (Reliable storage for all fields)
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          full_name: profileData.full_name,
+          phone: profileData.phone,
+          current_city: profileData.current_city,
+          education_level: profileData.education_level,
+          experience_level: profileData.experience_level,
+          linkedin_url: profileData.linkedin_url,
+          github_url: profileData.github_url
+        }
+      })
+      if (authError) throw authError
+
+      // 2. Update Users Table (Only fields that definitely exist or we want to sync)
+      // Excluding education_level and experience_level as they are missing from schema
+      const dbData = {
+        id: userId,
+        full_name: profileData.full_name,
+        phone: profileData.phone,
+        current_city: profileData.current_city,
+        linkedin_url: profileData.linkedin_url,
+        github_url: profileData.github_url
+        // education_level: profileData.education_level, // Removed to prevent error
+        // experience_level: profileData.experience_level // Removed to prevent error
+      }
+
       const { data, error } = await supabase
         .from('Users')
-        .update(profileData)
-        .eq('id', userId)
+        .upsert(dbData)
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.warn("Error updating Users table (falling back to metadata):", error)
+        // Do not throw here, as metadata update was successful
+      }
       return data
     } catch (error) {
       console.error('Error updating user profile:', error)

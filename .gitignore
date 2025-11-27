@@ -98,3 +98,17 @@ __pycache__/
 # package-lock.json
 # yarn.lock
 # pnpm-lock.yaml
+
+# Additional Node / framework caches and build folders
+.npm/
+.pnp.*
+.next/
+.turbo/
+.parcel-cache/
+.cache/
+.expo/
+.expo-shared/
+.vercel/
+
+# OS generated files
+Icon\r

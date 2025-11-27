@@ -82,8 +82,9 @@ const ResumePage = () => {
 
   const loadUserResume = async () => {
     try {
-      const data = await ResumeService.getUserResume(authUser.id)
-      if (data) {
+      const response = await ResumeService.getUserResume(authUser.id)
+      if (response && response.data) {
+        const data = response.data
         setResumeData(data)
         if (data.parsedText) {
           analyzeResume(data.parsedText, data)
@@ -100,8 +101,34 @@ const ResumePage = () => {
     // Map parsed data to builder store structure
     const builderData = {
       personalInfo: data.personalInfo || {},
-      sections: data.sections || [],
-      skills: data.skills || [],
+      sections: [
+        {
+          id: 'summary',
+          title: 'Summary',
+          content: data.summary || ''
+        },
+        {
+          id: 'experience',
+          title: 'Professional Experience',
+          items: data.experience || []
+        },
+        {
+          id: 'education',
+          title: 'Education',
+          items: data.education || []
+        },
+        {
+          id: 'skills',
+          title: 'Skills',
+          items: data.skills || []
+        },
+        {
+          id: 'projects',
+          title: 'Projects',
+          items: data.projects || []
+        }
+      ],
+      skills: data.skills || [], // Keep for backward compatibility if needed
       template: 'classic' // default
     }
     setResume(builderData)

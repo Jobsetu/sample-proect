@@ -18,7 +18,7 @@ const JobTailor = () => {
   const [loadingType, setLoadingType] = useState(null) // 'resume' | 'coverLetter' | 'interview'
   const [result, setResult] = useState(null) // { type: 'resume' | 'coverLetter', data: any }
   const [error, setError] = useState(null)
-  
+
   // Video Interview state
   const [isRecording, setIsRecording] = useState(false)
   const [mediaRecorder, setMediaRecorder] = useState(null)
@@ -30,7 +30,7 @@ const JobTailor = () => {
   const [interviewQuestions, setInterviewQuestions] = useState([])
   const [interviewInsights, setInterviewInsights] = useState(null)
   const [videoAnswers, setVideoAnswers] = useState([]) // Store video URLs for each answer
-  
+
   const { resume, setResume } = useResumeStore()
 
   // Save job description to localStorage whenever it changes
@@ -45,22 +45,51 @@ const JobTailor = () => {
       setError('Please enter a job description first.')
       return
     }
-    
+
     setLoading(true)
     setLoadingType('resume')
     setResult(null)
     setError(null)
-    
+
     try {
       console.log('Generating resume with job description:', jobDescription.substring(0, 100))
       console.log('Current resume:', resume)
-      
-      const customResume = await GeminiService.generateCustomResume(jobDescription, resume)
-      
+
+      // Ensure we have a valid resume to start with
+      let currentResume = resume
+      if (!currentResume || !currentResume.personalInfo || !currentResume.personalInfo.name || !currentResume.sections || currentResume.sections.length === 0) {
+        console.log('Resume appears empty or invalid. Creating basic resume structure...')
+        // Import createBasicResume logic or define it here. 
+        // Since we can't easily import from Dashboard, we'll implement a helper or use the store's reset if available, 
+        // but better to create a basic structure.
+        const { data: { user } } = await import('../lib/supabase').then(m => m.supabase.auth.getUser())
+
+        currentResume = {
+          personalInfo: {
+            name: user?.user_metadata?.full_name || 'Your Name',
+            email: user?.email || 'email@example.com',
+            phone: user?.user_metadata?.phone || '',
+            location: user?.user_metadata?.current_city || '',
+            linkedin: user?.user_metadata?.linkedin_url || '',
+            github: user?.user_metadata?.github_url || '',
+          },
+          sections: [
+            { id: 'summary', title: 'Professional Summary', content: 'Experienced professional seeking new opportunities.' },
+            { id: 'experience', title: 'Work Experience', items: [] },
+            { id: 'education', title: 'Education', items: [] },
+            { id: 'skills', title: 'Skills', items: [] },
+            { id: 'projects', title: 'Projects', items: [] }
+          ]
+        }
+        setResume(currentResume)
+      }
+
+      const customResume = await GeminiService.generateCustomResume(jobDescription, currentResume)
+
       if (!customResume || !customResume.sections) {
         throw new Error('Invalid resume data received from AI')
       }
-      
+
       console.log('Generated resume:', customResume)
       setResume(customResume)
       setResult({ type: 'resume', data: customResume })
@@ -78,21 +107,21 @@ const JobTailor = () => {
       setError('Please enter a job description first.')
       return
     }
-    
+
     setLoading(true)
     setLoadingType('coverLetter')
     setResult(null)
     setError(null)
-    
+
     try {
       console.log('Generating cover letter with job description:', jobDescription.substring(0, 100))
-      
+
       const coverLetter = await GeminiService.generateCoverLetter(jobDescription, resume)
-      
+
       if (!coverLetter || coverLetter.length < 100) {
         throw new Error('Cover letter too short. Please try again.')
       }
-      
+
       setResult({ type: 'coverLetter', data: coverLetter })
     } catch (error) {
       console.error('Error generating cover letter:', error)
@@ -108,7 +137,7 @@ const JobTailor = () => {
       setError('Please enter a job description first.')
       return
     }
-    
+
     setLoading(true)
     setLoadingType('interview')
     setInterviewStep(0)
@@ -116,7 +145,7 @@ const JobTailor = () => {
     setInterviewInsights(null)
     setVideoAnswers([])
     setError(null)
-    
+
     try {
       const questions = await GeminiService.generateMockInterviewQuestions(jobDescription, resume)
       if (!questions || questions.length === 0) {
@@ -135,9 +164,9 @@ const JobTailor = () => {
 
   const startVideoStream = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { width: 1280, height: 720 }, 
-        audio: true 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 1280, height: 720 },
+        audio: true
       })
       setVideoStream(stream)
       setLoading(false)
@@ -169,7 +198,7 @@ const JobTailor = () => {
       const url = URL.createObjectURL(blob)
       setRecordedVideo(blob)
       setVideoUrl(url)
-      
+
       // Store video answer
       const newAnswers = [...videoAnswers]
       newAnswers[interviewStep] = url
@@ -190,16 +219,16 @@ const JobTailor = () => {
 
   const handleAnalyzeVideo = async () => {
     if (!recordedVideo || !interviewQuestions[interviewStep]) return
-    
+
     setLoading(true)
     setError(null)
-    
+
     try {
       // For now, we'll analyze based on the question
       // In a real implementation, you'd transcribe the video audio first
       // For this demo, we'll use a text-based analysis prompt
       const feedback = await GeminiService.analyzeInterviewAnswer(
-        interviewQuestions[interviewStep], 
+        interviewQuestions[interviewStep],
         `[Video answer recorded - ${Math.round(recordedVideo.size / 1024)}KB]`
       )
       setInterviewFeedback(feedback)
@@ -256,7 +285,7 @@ const JobTailor = () => {
     setVideoAnswers([])
     setRecordedVideo(null)
     setVideoUrl(null)
-    
+
     // Stop video stream
     if (videoStream) {
       videoStream.getTracks().forEach(track => track.stop())
@@ -322,8 +351,8 @@ const JobTailor = () => {
 
       {/* Error Display */}
       {error && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }} 
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3"
         >
@@ -342,22 +371,20 @@ const JobTailor = () => {
       <div className="mb-6 flex gap-2 border-b border-white/10">
         <button
           onClick={() => setActiveTab('resume')}
-          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
-            activeTab === 'resume'
-              ? 'border-primary-500 text-primary-400'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
+          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'resume'
+            ? 'border-primary-500 text-primary-400'
+            : 'border-transparent text-gray-400 hover:text-white'
+            }`}
         >
           <FileText className="w-4 h-4 inline mr-2" />
           Resume & Cover Letter
         </button>
         <button
           onClick={() => setActiveTab('interview')}
-          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
-            activeTab === 'interview'
-              ? 'border-primary-500 text-primary-400'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
+          className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${activeTab === 'interview'
+            ? 'border-primary-500 text-primary-400'
+            : 'border-transparent text-gray-400 hover:text-white'
+            }`}
         >
           <Video className="w-4 h-4 inline mr-2" />
           AI Mock Interview (Video)
@@ -370,7 +397,7 @@ const JobTailor = () => {
           <div className="flex flex-wrap gap-4 justify-center">
             <button
               onClick={handleGenerateResume}
-              disabled={loading || !jobDescription.trim()}
+              disabled={loading}
               className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && loadingType === 'resume' ? (
@@ -387,7 +414,7 @@ const JobTailor = () => {
             </button>
             <button
               onClick={handleGenerateCoverLetter}
-              disabled={loading || !jobDescription.trim()}
+              disabled={loading}
               className="btn-secondary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading && loadingType === 'coverLetter' ? (
@@ -427,7 +454,7 @@ const JobTailor = () => {
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold text-white">Cover Letter</h3>
                   <div className="flex gap-2">
-                    <button 
+                    <button
                       onClick={() => {
                         navigator.clipboard.writeText(result.data)
                         alert('Cover letter copied to clipboard!')
@@ -561,9 +588,9 @@ const JobTailor = () => {
                       {videoAnswers.map((videoUrl, idx) => (
                         <div key={idx} className="bg-dark-900 p-3 rounded-lg">
                           <p className="text-gray-400 text-sm mb-2">Question {idx + 1}: {interviewQuestions[idx]}</p>
-                          <video 
-                            src={videoUrl} 
-                            controls 
+                          <video
+                            src={videoUrl}
+                            controls
                             className="w-full rounded-lg max-h-64"
                           />
                         </div>
@@ -584,7 +611,7 @@ const JobTailor = () => {
                 <h3 className="text-lg font-semibold text-white">Video Mock Interview ({interviewStep + 1}/{interviewQuestions.length})</h3>
                 <button onClick={resetInterview}><X className="w-5 h-5 text-gray-400" /></button>
               </div>
-              
+
               <div className="space-y-6">
                 {/* Question */}
                 <div className="bg-purple-500/10 border border-purple-500/20 p-4 rounded-lg">
@@ -606,7 +633,7 @@ const JobTailor = () => {
                       className="w-full h-64 object-cover"
                     />
                   )}
-                  
+
                   {/* Recording Indicator */}
                   {isRecording && (
                     <div className="absolute top-4 left-4 flex items-center gap-2 bg-red-500 px-3 py-1 rounded-full">

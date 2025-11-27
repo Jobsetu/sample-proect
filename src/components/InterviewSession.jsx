@@ -116,16 +116,16 @@ const InterviewSession = ({ mode, role, onExit }) => {
                 const geminiResponse = await GeminiService.analyzeInterviewAnswer("Previous Question", userResponse)
 
                 // Construct the AI response
-                const aiResponseText = `${geminiResponse.feedback} Now, moving on: ${geminiResponse.improvedAnswer ? "Here's a tip: " + geminiResponse.improvedAnswer : ""} Next question: What is your greatest strength?`
-                // Wait, the analyzeInterviewAnswer returns specific structure. Let's just ask for a next question generation.
+                const feedbackPart = geminiResponse.feedback ? `${geminiResponse.feedback}` : "Good answer."
+                const tipPart = geminiResponse.improvedAnswer ? ` Here's a tip: ${geminiResponse.improvedAnswer}` : ""
 
-                // Let's actually implement a proper "next turn" generation in GeminiService or here
-                // For speed, I'll mock the "next question" logic slightly with the existing tools or just simple logic
-                // But to be "AI-powered", let's do a quick custom call if possible, or just use the analyze tool
+                // Get next question from AI
+                const nextQuestion = await GeminiService.generateNextInterviewQuestion(role || 'General', "Previous Question", userResponse)
 
-                const nextQuestion = await generateNextTurn(userResponse)
-                addMessage('ai', nextQuestion)
-                speak(nextQuestion)
+                const fullResponse = `${feedbackPart}${tipPart} Now, next question: ${nextQuestion}`
+
+                addMessage('ai', fullResponse)
+                speak(fullResponse)
             }
 
         } catch (error) {
@@ -136,14 +136,7 @@ const InterviewSession = ({ mode, role, onExit }) => {
         }
     }
 
-    const generateNextTurn = async (lastAnswer) => {
-        // This is a temporary local helper. Ideally this goes into GeminiService
-        // We will use the existing 'generateMockInterviewQuestions' as a base or just generic generation
-        // Since we can't easily modify GeminiService in this file, we will assume a simple flow
-        // In a real implementation, we'd add `chatWithInterviewer` to GeminiService
-
-        return "That's a good point. Can you elaborate on a specific challenge you faced in that situation?"
-    }
+    // Removed local generateNextTurn as we use GeminiService now
 
     const endInterview = async () => {
         setInterviewEnded(true)
@@ -218,8 +211,8 @@ const InterviewSession = ({ mode, role, onExit }) => {
                         className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                         <div className={`max-w-[80%] p-4 rounded-2xl ${msg.sender === 'user'
-                                ? 'bg-primary-600 text-white rounded-tr-none'
-                                : 'bg-dark-800 text-gray-200 rounded-tl-none border border-white/10'
+                            ? 'bg-primary-600 text-white rounded-tr-none'
+                            : 'bg-dark-800 text-gray-200 rounded-tl-none border border-white/10'
                             }`}>
                             <p className="leading-relaxed">{msg.text}</p>
                         </div>
@@ -243,8 +236,8 @@ const InterviewSession = ({ mode, role, onExit }) => {
                     <button
                         onClick={toggleListening}
                         className={`p-4 rounded-full transition-all ${isListening
-                                ? 'bg-red-500 text-white animate-pulse'
-                                : 'bg-dark-700 text-gray-400 hover:bg-dark-600 hover:text-white'
+                            ? 'bg-red-500 text-white animate-pulse'
+                            : 'bg-dark-700 text-gray-400 hover:bg-dark-600 hover:text-white'
                             }`}
                     >
                         {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}

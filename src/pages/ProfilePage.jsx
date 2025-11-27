@@ -106,7 +106,7 @@ const ProfilePage = () => {
       alert('Profile updated successfully!')
     } catch (error) {
       console.error('Error saving profile:', error)
-      alert('Error saving profile. Please try again.')
+      alert(`Error saving profile: ${error.message || 'Unknown error'}`)
     }
   }
 
@@ -451,15 +451,46 @@ const ProfilePage = () => {
             <div className="glass-effect rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <button className="w-full flex items-center space-x-3 p-3 bg-dark-700 rounded-lg hover:bg-dark-600 transition-colors">
+                <button
+                  onClick={() => window.location.href = '/resume'}
+                  className="w-full flex items-center space-x-3 p-3 bg-dark-700 rounded-lg hover:bg-dark-600 transition-colors"
+                >
                   <Briefcase className="w-5 h-5 text-primary-400" />
                   <span className="text-white">Manage Resume</span>
                 </button>
-                <button className="w-full flex items-center space-x-3 p-3 bg-dark-700 rounded-lg hover:bg-dark-600 transition-colors">
+                <button
+                  onClick={() => {
+                    const url = prompt("Enter your LinkedIn Profile URL:", formData.linkedin_url);
+                    if (url !== null) {
+                      setFormData(prev => ({ ...prev, linkedin_url: url }));
+                      UserService.updateUserProfile(user.id, { ...formData, linkedin_url: url })
+                        .then(() => {
+                          alert("LinkedIn URL updated!");
+                          fetchProfile();
+                        })
+                        .catch(err => alert("Failed to update LinkedIn URL"));
+                    }
+                  }}
+                  className="w-full flex items-center space-x-3 p-3 bg-dark-700 rounded-lg hover:bg-dark-600 transition-colors"
+                >
                   <Linkedin className="w-5 h-5 text-blue-400" />
                   <span className="text-white">Update LinkedIn</span>
                 </button>
-                <button className="w-full flex items-center space-x-3 p-3 bg-dark-700 rounded-lg hover:bg-dark-600 transition-colors">
+                <button
+                  onClick={() => {
+                    const url = prompt("Enter your GitHub Profile URL:", formData.github_url);
+                    if (url !== null) {
+                      setFormData(prev => ({ ...prev, github_url: url }));
+                      UserService.updateUserProfile(user.id, { ...formData, github_url: url })
+                        .then(() => {
+                          alert("GitHub URL updated!");
+                          fetchProfile();
+                        })
+                        .catch(err => alert("Failed to update GitHub URL"));
+                    }
+                  }}
+                  className="w-full flex items-center space-x-3 p-3 bg-dark-700 rounded-lg hover:bg-dark-600 transition-colors"
+                >
                   <Github className="w-5 h-5 text-gray-400" />
                   <span className="text-white">Connect GitHub</span>
                 </button>

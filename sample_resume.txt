@@ -1,0 +1,29 @@
+John Doe
+Software Engineer
+john.doe@example.com
+(555) 123-4567
+San Francisco, CA
+
+Summary
+Experienced software engineer with a passion for building scalable web applications. Skilled in React, Node.js, and Python.
+
+Experience
+Senior Software Engineer
+Tech Corp
+2020 - Present
+- Led development of key features.
+- Mentored junior developers.
+
+Software Engineer
+Startup Inc
+2018 - 2020
+- Built full-stack applications.
+- Optimized database queries.
+
+Education
+B.S. Computer Science
+University of Technology
+2014 - 2018
+
+Skills
+JavaScript, React, Node.js, Python, SQL, AWS

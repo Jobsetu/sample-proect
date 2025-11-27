@@ -144,7 +144,17 @@ const EditorPanel = () => {
 
   useMemo(() => {
     if (JSON.stringify(values) !== JSON.stringify(resume)) {
-      setResume(values)
+      // Prevent overwriting store with empty/default values if store has data
+      const hasValues = values.personalInfo?.name || (values.sections && values.sections.length > 0 && values.sections.some(s => s.items?.length > 0 || s.content));
+      const storeHasData = resume?.personalInfo?.name || (resume?.sections && resume.sections.length > 0 && resume.sections.some(s => s.items?.length > 0 || s.content));
+
+      // Only update if we have values, OR if we are intentionally clearing (store had data, now we have none? rare case, usually user action)
+      // Safer: Only update if values has data.
+      if (hasValues) {
+        setResume(values)
+      } else if (!storeHasData) {
+        // Both empty, fine to sync (or do nothing)
+      }
     }
   }, [values, setResume, resume])
 

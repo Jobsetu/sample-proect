@@ -19,720 +19,528 @@ const initializeGemini = async () => {
   return genAI
 }
 
+// Gemini Service using Python Backend via Bytez
 export class GeminiService {
-  static async generateResumeAnalysis(jobDescription, userResume) {
+  static async callBackend(endpoint, payload) {
     try {
-      const geminiClient = await initializeGemini()
-      if (!geminiClient) {
-        throw new Error('Gemini API key not configured')
+      console.log(`[GeminiService] Calling backend: /api/${endpoint}`);
+      const response = await fetch(`/api/${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[GeminiService] Backend error (${response.status}):`, errorText);
+        throw new Error(`Backend error: ${response.statusText}. ${errorText.substring(0, 100)}`);
       }
-      const { selectedModel } = require('../stores/useModelStore').useModelStore.getState();
-      const model = geminiClient.getGenerativeModel({ model: selectedModel })
 
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
-      const prompt = `
-        You are an expert resume analyst and ATS specialist. Perform a COMPREHENSIVE, DETAILED analysis comparing this resume against the job description.
-        
-        JOB DESCRIPTION:
-        ${jobDescription || 'General Software Engineering Role'}
-        
-        CANDIDATE RESUME:
-        ${JSON.stringify(userResume)}
-        
-        CRITICAL REQUIREMENTS - DO NOT GIVE GENERIC RESPONSES:
-        
-        1. **Missing Keywords Analysis** (MINIMUM 8-15 keywords): 
-           - Extract SPECIFIC keywords/technologies from the job description
-           - Only include keywords that are ACTUALLY MISSING from the resume
-           - Categorize by priority: High (critical for role), Medium (important), Low (nice to have)
-           - For EACH keyword provide: exact keyword, priority, category, and specific section to add it to
-           - NO GENERIC responses like "Relevant keywords" - use ACTUAL keywords from the job
-        
-        2. **Recommended Changes** (MINIMUM 5-8 changes):
-           - Identify SPECIFIC sections that need improvement
-           - Provide CONCRETE edits with actual before/after examples from the resume
-           - Rate impact: High, Medium, Low
-           - Include examples like: "Change 'Worked on backend' to 'Architected scalable backend serving 1M+ users'"
-           - NO GENERIC advice like "Enhance your resume"
-        
-        3. **Project Suggestions** (EXACTLY 3-5 projects):
-           - Suggest SPECIFIC project titles and descriptions
-           - Each must target 2-3 missing skills from the job description
-           - Include difficulty level and what skills it demonstrates
-           - Make them REALISTIC and RELEVANT to the job
-           - Example: "Build a CI/CD Pipeline with Jenkins and Docker" NOT "Some project"
-        
-        4. **ATS Improvement Steps** (MINIMUM 8-12 steps):
-           - Provide DETAILED, ACTIONABLE steps with priority 1-5
-           - Include specific formatting issues found in the resume
-           - Mention exact keywords to add and where
-           - Provide expected impact for each step
-           - Examples: "Add 'React, TypeScript' to skills section", "Use standard header 'PROFESSIONAL EXPERIENCE'"
-           - NO GENERIC steps like "Improve formatting"
-        
-        5. **Standard Analysis**:
-           - Match score: Realistic 0-10 based on actual skill overlap
-           - ATS Score: Realistic 0-10 based on formatting and keyword presence
-           - Strengths: MINIMUM 4-6 specific strengths from the resume
-           - Weaknesses: MINIMUM 4-6 specific weaknesses
-           - Missing Skills: MINIMUM 5-10 actual required skills from job description
-           - Suggestions: MINIMUM 6-10 specific actionable suggestions
-           - Keywords to Add: MINIMUM 8-12 actual keywords from job description
-           - ATS Feedback: MINIMUM 8-12 detailed feedback items
-           - Experience estimation: Calculate based on resume content, provide reasoning
-        
-        ABSOLUTELY FORBIDDEN RESPONSES:
-        - "Good foundation"
-        - "Needs improvement"
-        - "Enhance your resume"
-        - "Relevant keywords"
-        - "Some required skills"
-        - "Could not estimate"
-        - Any generic, vague, or placeholder text
-        
-        REQUIRED DETAIL LEVEL:
-        - Every strength must reference SPECIFIC achievements or skills from the resume
-        - Every weakness must identify SPECIFIC gaps compared to job requirements
-        - Every suggestion must be ACTIONABLE with clear steps
-        - Every keyword must be EXACT text from the job description
-        - Experience estimation must be BASED ON ACTUAL resume content
-        
-        FORMAT RESPONSE AS JSON:
-        {
-          "matchScore": number (realistic 0-10),
-          "atsScore": number (realistic 0-10),
-          "strengths": [string] (min 4-6, specific to resume),
-          "weaknesses": [string] (min 4-6, specific gaps),
-          "missingSkills": [string] (min 5-10, actual skills from job),
-          "suggestions": [string] (min 6-10, actionable steps),
-          "keywordsToAdd": [string] (min 8-12, exact keywords from job),
-          "atsFeedback": [string] (min 8-12, detailed formatting/keyword advice),
-          "estimatedExperience": {
-            "level": string (Junior/Mid/Senior/Lead based on resume),
-            "years": number (calculated from resume),
-            "reasoning": string (explain calculation)
-          },
-          "missingKeywords": [
-            {
-              "keyword": string (exact from job description),
-              "priority": "High" | "Medium" | "Low",
-              "category": "Technical" | "Soft Skill" | "Tool" | "Concept",
-              "whereToAdd": string (specific section name)
-            }
-          ] (min 8-15 items),
-          "recommendedChanges": [
-            {
-              "section": string (exact section name),
-              "change": string (specific edit to make),
-              "impact": "High" | "Medium" | "Low",
-              "example": string (before/after example)
-            }
-          ] (min 5-8 items),
-          "projectSuggestions": [
-            {
-              "title": string (specific project name),
-              "description": string (what to build, 2-3 sentences),
-              "targetSkills": [string] (specific skills it demonstrates),
-              "difficulty": "Beginner" | "Intermediate" | "Advanced"
-            }
-          ] (exactly 3-5 items),
-          "atsImprovements": [
-            {
-              "step": string (specific action to take),
-              "priority": number (1-5, 1 being highest),
-              "expectedImpact": string (what this will improve)
-            }
-          ] (min 8-12 items),
-          "analysis": string (overall summary)
-        }
-        
-        ANALYZE NOW WITH MAXIMUM DETAIL AND SPECIFICITY. Base everything on ACTUAL content from the resume and job description.
-      `
-
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      // Robust JSON extraction
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      const jsonString = jsonMatch ? jsonMatch[0] : text
-
-      // Try to parse JSON response
-      try {
-        const parsed = JSON.parse(jsonString)
-
-        // Ensure all new fields exist with defaults if missing
-        return {
-          ...parsed,
-          missingKeywords: parsed.missingKeywords || [],
-          recommendedChanges: parsed.recommendedChanges || [],
-          projectSuggestions: parsed.projectSuggestions || [],
-          atsImprovements: parsed.atsImprovements || []
-        }
-      } catch (parseError) {
-        console.error('JSON parse error:', parseError)
-        // Return structured fallback with all fields
-        return {
-          matchScore: 6.0,
-          atsScore: 7.0,
-          strengths: ["Strong technical background", "Relevant experience"],
-          weaknesses: ["Missing some required skills"],
-          missingSkills: ["Docker", "GraphQL"],
-          suggestions: ["Add more specific technical skills", "Quantify your achievements"],
-          keywordsToAdd: ["React", "Node.js", "AWS"],
-          atsFeedback: ["Avoid using complex tables or columns", "Use standard section headers"],
-          estimatedExperience: {
-            level: "Mid-Level",
-            years: 3,
-            reasoning: "Based on listed roles and project complexity."
-          },
-          missingKeywords: [],
-          recommendedChanges: [],
-          projectSuggestions: [],
-          atsImprovements: [],
-          analysis: text
-        }
+      // Handle response - could be string or object
+      if (data.output) {
+        console.log(`[GeminiService] Received response from ${data.source || 'unknown'} source, length: ${typeof data.output === 'string' ? data.output.length : 'object'}`);
+        return data.output;
+      } else {
+        console.warn(`[GeminiService] Response missing 'output' field:`, data);
+        throw new Error('Invalid response format from backend');
       }
     } catch (error) {
-      console.error('Error generating resume analysis:', error)
-      return {
-        matchScore: 5.0,
-        atsScore: 5.0,
-        strengths: ["Good foundation"],
-        weaknesses: ["Needs improvement"],
-        missingSkills: ["Some required skills"],
-        suggestions: ["Enhance your resume"],
-        keywordsToAdd: ["Relevant keywords"],
-        atsFeedback: ["Simplify formatting"],
-        estimatedExperience: {
-          level: "Unknown",
-          years: 0,
-          reasoning: "Could not estimate."
-        },
-        analysis: "Analysis could not be generated at this time."
+      console.error(`[GeminiService] Error calling ${endpoint}:`, error);
+      // Provide more helpful error messages
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        throw new Error('Cannot connect to backend server. Please make sure the server is running on port 5000.');
+      }
+      throw error;
+    }
+  }
+
+  static parseAIResponse(text) {
+    try {
+      // 1. Try standard parsing first
+      const jsonMatch = text.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error('No JSON structure found');
+      return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      console.warn("Standard JSON parse failed, attempting to fix Python-style dict...", e);
+      try {
+        // 2. Handle Python-style stringified dicts (single quotes)
+        let fixedText = text
+          .replace(/'/g, '"') // Replace all single quotes with double quotes
+          .replace(/True/g, 'true')
+          .replace(/False/g, 'false')
+          .replace(/None/g, 'null');
+
+        const jsonMatch = fixedText.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error('No JSON structure found after fixing');
+        return JSON.parse(jsonMatch[0]);
+      } catch (e2) {
+        console.error("Failed to parse AI response:", text);
+        throw e2;
       }
     }
   }
 
-  static async estimateExperience(userResume) {
+  static async generateResumeAnalysis(jobDescription, userResume) {
+    const prompt = `
+      You are an expert resume analyst. Analyze this resume against the job description.
+      
+      JOB DESCRIPTION:
+      ${jobDescription}
+      
+      CANDIDATE RESUME:
+      ${JSON.stringify(userResume)}
+      
+      Return JSON with matchScore (0-100), strengths (array), weaknesses (array), and analysis (string).
+    `;
+
     try {
-      const geminiClient = await initializeGemini()
-      if (!geminiClient) {
-        throw new Error('Gemini API key not configured')
-      }
-      const { selectedModel } = require('../stores/useModelStore').useModelStore.getState();
-      const model = geminiClient.getGenerativeModel({ model: selectedModel })
-
-      const prompt = `
-        Estimate the total years of professional experience and seniority level based on this resume:
-        
-        User Resume: ${JSON.stringify(userResume)}
-        
-        Return as JSON:
-        {
-          "level": string (e.g., Junior, Mid-Level, Senior, Lead, Principal),
-          "years": number,
-          "reasoning": string
-        }
-      `
-
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      try {
-        return JSON.parse(text)
-      } catch (e) {
-        return {
-          level: "Mid-Level",
-          years: 3,
-          reasoning: "Estimation based on typical progression."
-        }
-      }
+      const response = await this.callBackend('generate-resume', { input: prompt });
+      let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
+      return this.parseAIResponse(text);
     } catch (error) {
-      console.error('Error estimating experience:', error)
+      console.error('Error analyzing resume:', error);
       return {
-        level: "Unknown",
-        years: 0,
-        reasoning: "Could not estimate."
-      }
+        matchScore: 0,
+        strengths: ["Error analyzing"],
+        weaknesses: ["Error analyzing"],
+        analysis: "Could not analyze at this time."
+      };
     }
   }
 
   static async generateCustomResume(jobDescription, userResume, selectedSections = [], selectedSkills = []) {
+    // STRATEGY: Surgical Update (Fragment-Based)
+    // We ask the AI ONLY for the content that needs to change.
+    // We then merge this into the existing resume structure.
+
+    const hasExperience = userResume.sections.find(s => s.id === 'experience')?.items?.length > 0;
+
+    const prompt = `
+      You are an expert resume writer. I need you to update specific sections of a candidate's resume to better match a job description.
+
+      JOB DESCRIPTION:
+      ${jobDescription}
+
+      CANDIDATE'S EXPERIENCE & SKILLS:
+      ${JSON.stringify(userResume.sections)}
+
+      INSTRUCTIONS:
+      1. **Summary**: Write a new, powerful 3-4 sentence Professional Summary tailored to this job.
+      2. **Skills**: specific list of technical and soft skills relevant to the job.
+      3. **Experience**: ${hasExperience
+        ? 'For each job in the resume, provide 2-3 improved bullet points that highlight impact and relevance to the new job. Match the "company" name exactly.'
+        : 'Create 2 relevant professional experience entries that would make this candidate a strong fit for the job. Use realistic but generic company names (e.g., "Tech Solutions Inc", "Global Corp") and dates.'}
+      4. **Projects**: Generate 2-3 relevant side projects or academic projects that demonstrate skills required for this job.
+
+      OUTPUT FORMAT:
+      Return ONLY a valid JSON object with this structure:
+      {
+        "summary": "New summary text...",
+        "skills": ["Skill 1", "Skill 2", ...],
+        "experience": [
+          { "company": "Company Name", "role": "Job Title", "location": "City, State", "startDate": "YYYY", "endDate": "YYYY", "bullets": ["Bullet 1", "Bullet 2"] }
+        ],
+        "projects": [
+          { "title": "Project Title", "subtitle": "Technologies Used", "description": "Brief description of what was built and its impact.", "technologies": ["Tech 1", "Tech 2"] }
+        ]
+      }
+    `;
+
     try {
-      const geminiClient = await initializeGemini()
-      if (!geminiClient) {
-        throw new Error('Gemini API key not configured')
-      }
-      const { selectedModel } = require('../stores/useModelStore').useModelStore.getState();
-      const model = geminiClient.getGenerativeModel({ model: selectedModel })
+      console.log('Sending surgical update prompt to backend...');
+      const response = await this.callBackend('generate-resume', { input: prompt });
 
-      const prompt = `
-        Generate a customized resume based on the job requirements and user's existing resume.
-        The output MUST align with the application's data structure using 'sections'.
-        
-        Job Description: ${jobDescription}
-        
-        User Resume: ${JSON.stringify(userResume)}
-        
-        Sections to enhance: ${selectedSections.join(', ')}
-        Skills to add: ${selectedSkills.join(', ')}
-        
-        Please generate a professional resume that:
-        1. Matches the job requirements
-        2. Highlights relevant experience
-        3. Uses industry-standard keywords
-        4. Maintains professional formatting
-        5. Includes standard sections: Summary, Skills, Experience, Education, Projects
-        
-        Format the response as JSON with the following structure:
-        {
-          "personalInfo": {
-            "name": string,
-            "title": string,
-            "email": string,
-            "phone": string,
-            "location": string,
-            "linkedin": string,
-            "github": string
-          },
-          "sections": [
-            { 
-              "id": "summary", 
-              "title": "Summary", 
-              "content": string 
-            },
-            {
-              "id": "skills",
-              "title": "Skills",
-              "items": [string]
-            },
-            {
-              "id": "experience",
-              "title": "Professional Experience",
-              "items": [
-                {
-                  "role": string,
-                  "company": string,
-                  "location": string,
-                  "startDate": string,
-                  "endDate": string,
-                  "bullets": [string]
-                }
-              ]
-            },
-            {
-              "id": "education",
-              "title": "Education",
-              "items": [
-                {
-                  "degree": string,
-                  "school": string,
-                  "location": string,
-                  "year": string,
-                  "gpa": string
-                }
-              ]
-            },
-            {
-              "id": "projects",
-              "title": "Projects",
-              "items": [
-                {
-                  "title": string,
-                  "subtitle": string,
-                  "description": string,
-                  "technologies": [string]
-                }
-              ]
-            }
-          ]
-        }
-      `
+      let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
+      console.log('Processed text for parsing:', text);
 
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      let text = response.text()
-
-      // Try to extract JSON from markdown code blocks if present
-      const jsonMatch = text.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/) || text.match(/(\{[\s\S]*\})/)
-      if (jsonMatch) {
-        text = jsonMatch[1]
-      }
-
+      let updates;
       try {
-        const parsed = JSON.parse(text)
-        // Validate structure
-        if (!parsed.personalInfo || !parsed.sections) {
-          throw new Error('Invalid resume structure received')
-        }
-        return parsed
+        updates = this.parseAIResponse(text);
+        console.log('Parsed updates:', updates);
       } catch (parseError) {
-        console.error('JSON parsing error:', parseError, 'Raw text:', text.substring(0, 200))
-        // Try to merge with existing resume structure
-        const fallback = {
-          personalInfo: userResume.personalInfo || {
-            name: '',
-            title: '',
-            email: '',
-            phone: '',
-            location: '',
-            linkedin: '',
-            github: ''
-          },
-          sections: userResume.sections || [
-            { id: 'summary', title: 'Summary', content: '' },
-            { id: 'skills', title: 'Skills', items: [] },
-            { id: 'experience', title: 'Professional Experience', items: [] },
-            { id: 'education', title: 'Education', items: [] },
-            { id: 'projects', title: 'Projects', items: [] }
-          ]
-        }
-        throw new Error('Failed to parse AI response. Please check your API key and try again.')
+        console.warn("AI response parsing failed, using text fallback:", parseError);
+        // Fallback: If JSON fails, treat the whole text as a summary
+        updates = { summary: text.substring(0, 500) + "..." };
       }
+
+      // MERGE LOGIC
+      const newResume = JSON.parse(JSON.stringify(userResume)); // Deep copy
+
+      // 1. Update Summary
+      if (updates.summary) {
+        const summarySection = newResume.sections.find(s => s.id === 'summary');
+        if (summarySection) {
+          summarySection.content = updates.summary;
+        } else {
+          // Add if missing
+          newResume.sections.unshift({ id: 'summary', title: 'Professional Summary', content: updates.summary });
+        }
+      }
+
+      // 2. Update Skills
+      if (updates.skills && Array.isArray(updates.skills)) {
+        const skillsSection = newResume.sections.find(s => s.id === 'skills');
+        if (skillsSection) {
+          skillsSection.items = updates.skills;
+        }
+      }
+
+      // 3. Update Experience
+      if (updates.experience && Array.isArray(updates.experience)) {
+        const expSection = newResume.sections.find(s => s.id === 'experience');
+        if (expSection) {
+          if (expSection.items.length === 0) {
+            // If original was empty, add the generated ones
+            expSection.items = updates.experience.map(item => ({
+              id: 'exp-' + Math.random().toString(36).substr(2, 9),
+              role: item.role || 'Professional',
+              company: item.company || 'Company',
+              location: item.location || 'Remote',
+              startDate: item.startDate || '2020',
+              endDate: item.endDate || 'Present',
+              bullets: item.bullets || []
+            }));
+          } else {
+            // Update existing
+            updates.experience.forEach(updateItem => {
+              // Fuzzy match company name or exact match
+              const originalItem = expSection.items.find(item =>
+                item.company.toLowerCase().includes(updateItem.company.toLowerCase()) ||
+                updateItem.company.toLowerCase().includes(item.company.toLowerCase())
+              );
+
+              if (originalItem && updateItem.bullets && Array.isArray(updateItem.bullets)) {
+                originalItem.bullets = updateItem.bullets;
+              }
+            });
+          }
+        }
+      }
+
+      // 4. Update Projects
+      if (updates.projects && Array.isArray(updates.projects)) {
+        const projSection = newResume.sections.find(s => s.id === 'projects');
+        if (projSection) {
+          // Always replace/add projects as they are specific to the JD
+          projSection.items = updates.projects.map(item => ({
+            id: 'proj-' + Math.random().toString(36).substr(2, 9),
+            title: item.title || 'Project',
+            subtitle: item.subtitle || 'Technologies',
+            description: item.description || '',
+            technologies: item.technologies || []
+          }));
+        } else {
+          // Add projects section if missing
+          newResume.sections.push({
+            id: 'projects',
+            title: 'Projects',
+            items: updates.projects.map(item => ({
+              id: 'proj-' + Math.random().toString(36).substr(2, 9),
+              title: item.title || 'Project',
+              subtitle: item.subtitle || 'Technologies',
+              description: item.description || '',
+              technologies: item.technologies || []
+            }))
+          });
+        }
+      }
+
+      return newResume;
+
     } catch (error) {
-      console.error('Error generating custom resume:', error)
-      throw error // Re-throw so caller can handle it
-    }
-  }
-
-  // ... (rest of methods kept as is: generateResumeSuggestions, generateCoverLetter, generateMockInterviewQuestions, analyzeInterviewAnswer)
-  static async generateResumeSuggestions(jobDescription, currentResume) {
-    try {
-      const geminiClient = await initializeGemini()
-      if (!geminiClient) {
-        throw new Error('Gemini API key not configured')
-      }
-      const { selectedModel } = require('../stores/useModelStore').useModelStore.getState();
-      const model = geminiClient.getGenerativeModel({ model: selectedModel })
-
-      const prompt = `
-        Provide specific suggestions to improve this resume for the given job:
-        
-        Job Description: ${jobDescription}
-        
-        Current Resume: ${JSON.stringify(currentResume)}
-        
-        Provide actionable suggestions for:
-        1. Summary improvements
-        2. Skills to add or emphasize
-        3. Experience descriptions to enhance
-        4. Keywords to include
-        5. Formatting improvements
-        
-        Return as JSON:
-        {
-          "summarySuggestions": [string],
-          "skillsSuggestions": [string],
-          "experienceSuggestions": [string],
-          "keywordSuggestions": [string],
-          "formattingSuggestions": [string]
-        }
-      `
-
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      try {
-        return JSON.parse(text)
-      } catch (parseError) {
-        return {
-          summarySuggestions: ["Add quantifiable achievements", "Include relevant keywords"],
-          skillsSuggestions: ["Add more technical skills", "Include soft skills"],
-          experienceSuggestions: ["Quantify your achievements", "Use action verbs"],
-          keywordSuggestions: ["Add industry-specific terms"],
-          formattingSuggestions: ["Improve readability", "Use consistent formatting"]
-        }
-      }
-    } catch (error) {
-      console.error('Error generating suggestions:', error)
-      return {
-        summarySuggestions: ["Improve your summary"],
-        skillsSuggestions: ["Add relevant skills"],
-        experienceSuggestions: ["Enhance experience descriptions"],
-        keywordSuggestions: ["Add keywords"],
-        formattingSuggestions: ["Improve formatting"]
-      }
+      console.error('Error generating custom resume:', error);
+      return userResume; // Return original on fatal error
     }
   }
 
   static async generateCoverLetter(jobDescription, userResume) {
+    // ENHANCED PROMPT for better quality
+    const prompt = `
+      Write a highly personalized and professional cover letter for the following job.
+      
+      JOB DESCRIPTION:
+      ${jobDescription}
+      
+      MY RESUME:
+      ${JSON.stringify(userResume)}
+      
+      INSTRUCTIONS:
+      1. **Tone**: Professional, enthusiastic, and confident.
+      2. **Structure**:
+         - **Opening**: State the role applied for and why I am a great fit.
+         - **Body Paragraph 1**: Highlight specific achievements from my resume that match the job requirements.
+         - **Body Paragraph 2**: Explain why I am interested in this specific company/role.
+         - **Closing**: Call to action (request interview) and professional sign-off.
+      3. **Specifics**: Use actual numbers and metrics from my resume. Do NOT use placeholders like "[Company Name]" - extract the company name from the job description.
+      4. **Length**: 300-400 words.
+      
+      Return ONLY the cover letter text.
+    `;
+
     try {
-      const geminiClient = await initializeGemini()
-      if (!geminiClient) {
-        throw new Error('Gemini API key not configured')
-      }
-      const { selectedModel } = require('../stores/useModelStore').useModelStore.getState();
-      const model = geminiClient.getGenerativeModel({ model: selectedModel })
-
-      // Extract key resume details for better integration
-      const name = userResume?.personalInfo?.name || 'Applicant'
-      const skills = userResume?.skills?.join(', ') || userResume?.sections?.find(s => s.id === 'skills')?.items?.join(', ') || ''
-      const experiences = userResume?.experience || userResume?.sections?.find(s => s.id === 'experience')?.items || []
-      const summary = userResume?.summary || userResume?.sections?.find(s => s.id === 'summary')?.content || ''
-
-      const prompt = `
-        Generate a professional, compelling cover letter that is EXACTLY 200-400 words (aim for 300 words).
-        
-        CRITICAL REQUIREMENTS:
-        - Word count: 200-400 words (count carefully!)
-        - Use SPECIFIC details from the resume below
-        - Match the candidate's experience to the job requirements
-        - Be concise yet impactful
-        - Sound natural and professional, not generic
-        
-        JOB DESCRIPTION:
-        ${jobDescription}
-        
-        CANDIDATE RESUME DETAILS:
-        Name: ${name}
-        
-        Professional Summary: ${summary}
-        
-        Key Skills: ${skills}
-        
-        Work Experience: ${JSON.stringify(experiences, null, 2)}
-        
-        COVER LETTER STRUCTURE:
-        1. Opening (1 paragraph): Mention the specific position and express genuine interest
-        2. Body (2 paragraphs): 
-           - Paragraph 1: Highlight 1-2 most relevant experiences with SPECIFIC achievements/metrics from resume
-           - Paragraph 2: Connect skills to job requirements, show understanding of the role
-        3. Closing (1 paragraph): Strong call to action, express enthusiasm
-        
-        FORMAT:
-        - Start with: "Dear Hiring Manager,"
-        - End with: "Sincerely,\n${name}"
-        - Use proper paragraph breaks (double line breaks)
-        
-        IMPORTANT: The cover letter must be detailed and specific, but stay within 200-400 words. Do NOT use filler content.
-        
-        Return ONLY the cover letter text, no additional commentary.
-      `
-
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      let coverLetter = response.text().trim()
-
-      // Basic validation
-      const wordCount = coverLetter.split(/\s+/).length
-      console.log(`Generated cover letter word count: ${wordCount}`)
-
-      // If too short, regenerate with emphasis on length
-      if (wordCount < 180) {
-        const expandPrompt = `The following cover letter is too short (${wordCount} words). Expand it to 250-300 words by adding more specific details from the resume and job requirements, while keeping it professional and impactful:
-
-${coverLetter}
-
-Job Requirements: ${jobDescription}
-
-Resume Skills: ${skills}
-Resume Experience: ${JSON.stringify(experiences.slice(0, 2))}
-
-Add concrete examples and achievements. Target 250-300 words total.`
-
-        const expandResult = await model.generateContent(expandPrompt)
-        const expandResponse = await expandResult.response
-        coverLetter = expandResponse.text().trim()
-      }
-
-      // If too long, ask to condense
-      if (wordCount > 450) {
-        const condensePrompt = `The following cover letter is too long (${wordCount} words). Condense it to exactly 300-350 words while keeping the most impactful content:
-
-${coverLetter}
-
-Keep only the strongest examples and most relevant skills. Target 300-350 words.`
-
-        const condenseResult = await model.generateContent(condensePrompt)
-        const condenseResponse = await condenseResult.response
-        coverLetter = condenseResponse.text().trim()
-      }
-
-      if (!coverLetter || coverLetter.length < 200) {
-        throw new Error('Generated cover letter is too short. Please try again.')
-      }
-
-      return coverLetter
+      const response = await this.callBackend('generate-cover-letter', { input: prompt });
+      return typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
     } catch (error) {
-      console.error('Error generating cover letter:', error)
-      throw error // Re-throw so caller can handle it
+      console.error("Error generating cover letter:", error);
+      return "Dear Hiring Manager,\n\nI am writing to express my interest in the position. Please find my resume attached.\n\nSincerely,\n[Your Name]";
     }
   }
 
   static async generateMockInterviewQuestions(jobDescription, userResume) {
+    const prompt = `Generate 5 interview questions for this job and resume. Return JSON array of strings. Job: ${jobDescription} Resume: ${JSON.stringify(userResume)}`;
     try {
-      const geminiClient = await initializeGemini()
-      if (!geminiClient) {
-        throw new Error('Gemini API key not configured')
-      }
-      const { selectedModel } = require('../stores/useModelStore').useModelStore.getState();
-      const model = geminiClient.getGenerativeModel({ model: selectedModel })
-
-      const prompt = `
-        Generate 5 behavioral and technical interview questions based on the job description and resume:
-        
-        Job Description: ${jobDescription}
-        
-        User Resume: ${JSON.stringify(userResume)}
-        
-        Return as JSON array of strings:
-        [
-          "Question 1",
-          "Question 2",
-          ...
-        ]
-      `
-
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      // Robust JSON extraction
-      const jsonMatch = text.match(/\[[\s\S]*\]/) // Expecting an array here
-      const jsonString = jsonMatch ? jsonMatch[0] : text
-
-      try {
-        return JSON.parse(jsonString)
-      } catch (e) {
-        return [
-          "Tell me about yourself.",
-          "Why do you want to work here?",
-          "Describe a challenging project you worked on.",
-          "What are your greatest strengths?",
-          "Where do you see yourself in 5 years?"
-        ]
-      }
+      const response = await this.callBackend('mock-interview', { messages: [{ role: "user", content: prompt }] });
+      let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
+      return this.parseAIResponse(text);
     } catch (error) {
-      console.error('Error generating interview questions:', error)
-      return [
-        "Tell me about yourself.",
-        "Why do you want to work here?",
-        "Describe a challenging project you worked on.",
-        "What are your greatest strengths?",
-        "Where do you see yourself in 5 years?"
-      ]
+      return ["Tell me about yourself."];
     }
   }
 
   static async analyzeInterviewAnswer(question, answer) {
+    const prompt = `Analyze answer: "${answer}" for question: "${question}". Return JSON: { rating, feedback, improvedAnswer }`;
     try {
-      const geminiClient = await initializeGemini()
-      if (!geminiClient) {
-        throw new Error('Gemini API key not configured')
-      }
-      const { selectedModel } = require('../stores/useModelStore').useModelStore.getState();
-      const model = geminiClient.getGenerativeModel({ model: selectedModel })
-
-      const prompt = `
-        Analyze this interview answer:
-        
-        Question: ${question}
-        Answer: ${answer}
-        
-        Provide:
-        1. Rating (1-10)
-        2. Feedback (strengths/weaknesses)
-        3. Improved version of the answer
-        
-        Return as JSON:
-        {
-          "rating": number,
-          "feedback": string,
-          "improvedAnswer": string
-        }
-      `
-
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      // Robust JSON extraction
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      const jsonString = jsonMatch ? jsonMatch[0] : text
-
-      try {
-        return JSON.parse(jsonString)
-      } catch (e) {
-        return {
-          rating: 5,
-          feedback: "Good attempt. Try to be more specific with examples.",
-          improvedAnswer: "I would recommend using the STAR method to structure your answer."
-        }
-      }
+      const response = await this.callBackend('mock-interview', { messages: [{ role: "user", content: prompt }] });
+      let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
+      return this.parseAIResponse(text);
     } catch (error) {
-      console.error('Error analyzing interview answer:', error)
-      return {
-        rating: 0,
-        feedback: "Could not analyze answer.",
-        improvedAnswer: ""
-      }
+      return { rating: 0, feedback: "Error analyzing" };
+    }
+  }
+
+  static async generateNextInterviewQuestion(role, lastQuestion, lastAnswer) {
+    const prompt = `Role: ${role}. Last Q: ${lastQuestion}. Last A: ${lastAnswer}. Next Question?`;
+    try {
+      const response = await this.callBackend('mock-interview', { messages: [{ role: "user", content: prompt }] });
+      let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
+      return text.trim();
+    } catch (error) {
+      return "Could you elaborate?";
     }
   }
 
   static async generateInterviewInsights(jobDescription, userResume, questions) {
+    const prompt = `Insights for Job: ${jobDescription}, Resume: ${JSON.stringify(userResume)}. Return JSON: { overallScore, strengths, areasForImprovement, recommendations }`;
     try {
-      const geminiClient = await initializeGemini()
-      if (!geminiClient) {
-        throw new Error('Gemini API key not configured')
-      }
-      const { selectedModel } = require('../stores/useModelStore').useModelStore.getState();
-      const model = geminiClient.getGenerativeModel({ model: selectedModel })
-
-      const prompt = `
-        Based on the job description, user's resume, and interview questions, provide comprehensive interview insights:
-        
-        Job Description: ${jobDescription}
-        
-        User Resume: ${JSON.stringify(userResume)}
-        
-        Interview Questions: ${JSON.stringify(questions)}
-        
-        Provide a comprehensive analysis with:
-        1. Overall performance score (1-10)
-        2. Key strengths demonstrated
-        3. Areas for improvement
-        4. Specific recommendations for better interview performance
-        
-        Return as JSON:
-        {
-          "overallScore": number,
-          "strengths": [string],
-          "areasForImprovement": [string],
-          "recommendations": [string]
-        }
-      `
-
-      const result = await model.generateContent(prompt)
-      const response = await result.response
-      const text = response.text()
-
-      try {
-        return JSON.parse(text)
-      } catch (e) {
-        return {
-          overallScore: 7,
-          strengths: ["Good communication", "Relevant experience", "Clear articulation"],
-          areasForImprovement: ["Be more specific with examples", "Quantify achievements", "Use STAR method"],
-          recommendations: [
-            "Practice the STAR method (Situation, Task, Action, Result) for behavioral questions",
-            "Prepare specific examples that demonstrate your skills",
-            "Quantify your achievements with numbers and metrics",
-            "Research the company and role more thoroughly",
-            "Practice answering common interview questions"
-          ]
-        }
-      }
+      const response = await this.callBackend('mock-interview', { messages: [{ role: "user", content: prompt }] });
+      let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
+      return this.parseAIResponse(text);
     } catch (error) {
-      console.error('Error generating interview insights:', error)
-      return {
-        overallScore: 7,
-        strengths: ["Good communication", "Relevant experience"],
-        areasForImprovement: ["Be more specific with examples", "Quantify achievements"],
-        recommendations: ["Practice STAR method", "Prepare more examples"]
+      return { overallScore: 0, strengths: [], recommendations: [] };
+    }
+  }
+  static async generateTailoredResumeMarkdown(jobDescription, userResume) {
+    // Extract candidate info for the prompt
+    const personalInfo = userResume?.personalInfo || {}
+    const name = personalInfo.name || 'Professional'
+    const email = personalInfo.email || 'email@example.com'
+    const phone = personalInfo.phone || ''
+    const location = personalInfo.location || ''
+    const linkedin = personalInfo.linkedin || ''
+    const github = personalInfo.github || ''
+
+    const sections = userResume?.sections || []
+    const experienceSection = sections.find(s => s.id === 'experience')
+    const educationSection = sections.find(s => s.id === 'education')
+    const skillsSection = sections.find(s => s.id === 'skills')
+    const summarySection = sections.find(s => s.id === 'summary')
+
+    const prompt = `You are a professional resume writer. Create a complete, tailored resume in Markdown format.
+
+JOB DESCRIPTION:
+${jobDescription}
+
+CANDIDATE DETAILS:
+Name: ${name}
+Email: ${email}
+Phone: ${phone || 'Not provided'}
+Location: ${location || 'Not provided'}
+LinkedIn: ${linkedin || 'Not provided'}
+GitHub: ${github || 'Not provided'}
+
+${summarySection ? `Summary: ${summarySection.content}` : ''}
+
+${skillsSection ? `Skills: ${JSON.stringify(skillsSection.items || [])}` : ''}
+
+${experienceSection ? `Experience: ${JSON.stringify(experienceSection.items || [])}` : ''}
+
+${educationSection ? `Education: ${JSON.stringify(educationSection.items || [])}` : ''}
+
+CRITICAL INSTRUCTIONS:
+1. Generate a COMPLETE, ACTUAL resume - NOT a template, guide, or example
+2. Start immediately with: # ${name}
+3. Use the candidate's actual information provided above
+4. If information is missing, create realistic professional content that matches the job description
+5. Structure exactly as shown below - replace placeholders with actual content
+6. Include at least 500 words of detailed, professional content
+7. Tailor ALL content to match keywords and requirements from the job description
+8. Use strong action verbs and include metrics/quantifiable achievements
+9. NO introductory text, NO explanations, NO "here is a resume" - just the resume content
+
+OUTPUT FORMAT (use actual data, not placeholders):
+
+# ${name}
+
+**Email:** ${email}${phone ? ` | **Phone:** ${phone}` : ''}${location ? ` | **Location:** ${location}` : ''}
+${linkedin ? `**LinkedIn:** ${linkedin}` : ''}${github ? ` | **GitHub:** ${github}` : ''}
+
+---
+
+## PROFESSIONAL SUMMARY
+
+[Write 4-5 detailed sentences (80-100 words) highlighting the candidate's experience, achievements, and expertise relevant to this specific job. Use information from the candidate details above. If missing, create professional content based on the job requirements.]
+
+---
+
+## CORE COMPETENCIES & TECHNICAL SKILLS
+
+[Extract and list 15-20 relevant technical skills from the candidate's skills and job description. Group by category: Programming Languages, Frameworks & Libraries, Cloud & DevOps, Databases, Tools & Platforms]
+
+---
+
+## PROFESSIONAL EXPERIENCE
+
+[For each position in the candidate's experience, or create 2-3 realistic positions if missing, format as:]
+
+**Position Title** | **Company Name** | Location | Start Date - End Date
+
+- [Bullet 1: Detailed achievement with metrics and impact, 15-25 words]
+- [Bullet 2: Detailed achievement with metrics and impact, 15-25 words]
+- [Bullet 3: Detailed achievement with metrics and impact, 15-25 words]
+- [Bullet 4: Detailed achievement with metrics and impact, 15-25 words]
+
+[Repeat for each position. Include 4-6 bullets per position.]
+
+---
+
+## EDUCATION
+
+**Degree Name** | **University Name** | Graduation Year
+[Relevant coursework, honors, or GPA if applicable]
+
+---
+
+## PROJECTS
+
+**Project Name** | Technologies Used
+- [Detailed project description with impact and technologies]
+
+---
+
+## CERTIFICATIONS
+
+- [Relevant certification 1]
+- [Relevant certification 2]
+
+REMEMBER: Output ONLY the resume content starting with "# ${name}". No other text before or after.`;
+
+    try {
+      // Extract job title and company from description if possible
+      const jobTitleMatch = jobDescription.match(/(?:Title|Position|Role):\s*([^\n]+)/i);
+      const companyMatch = jobDescription.match(/(?:Company|Organization):\s*([^\n]+)/i);
+
+      const response = await this.callBackend('generate-resume', {
+        input: prompt,
+        resume: userResume,
+        jobDescription: jobDescription,
+        jobTitle: jobTitleMatch ? jobTitleMatch[1].trim() : 'Position',
+        companyName: companyMatch ? companyMatch[1].trim() : 'Company'
+      });
+
+      // Handle different response types
+      let markdownText = response;
+      if (typeof response === 'object') {
+        markdownText = response.content || response.text || JSON.stringify(response);
+      }
+
+      // Ensure we have valid markdown
+      if (!markdownText || typeof markdownText !== 'string' || markdownText.trim().length < 100) {
+        throw new Error('Generated resume is too short or invalid. Please try again.');
+      }
+
+      return markdownText;
+    } catch (error) {
+      console.error("Error generating markdown resume:", error);
+      throw error;
+    }
+  }
+
+  static parseResumeMarkdown(markdown, originalResume) {
+    // Helper to extract section content
+    const extractSection = (header) => {
+      const regex = new RegExp(`#{1,3}\\s*${header}[\\s\\S]*?(?=#{1,3}|$)`, 'i');
+      const match = markdown.match(regex);
+      return match ? match[0].replace(new RegExp(`#{1,3}\\s*${header}`, 'i'), '').trim() : '';
+    };
+
+    // Helper to parse bullets
+    const parseBullets = (text) => {
+      return text.split('\n')
+        .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*') || line.trim().startsWith('•'))
+        .map(line => line.replace(/^[-*•]\s*/, '').trim());
+    };
+
+    const resume = JSON.parse(JSON.stringify(originalResume)); // Start with original to keep personal info safe if parsing fails
+
+    // 1. Summary
+    const summaryText = extractSection('Summary') || extractSection('Professional Summary') || extractSection('Profile');
+    if (summaryText) {
+      const summarySection = resume.sections.find(s => s.id === 'summary');
+      if (summarySection) summarySection.content = summaryText;
+    }
+
+    // 2. Skills
+    const skillsText = extractSection('Skills') || extractSection('Technical Skills');
+    if (skillsText) {
+      const skillsSection = resume.sections.find(s => s.id === 'skills');
+      if (skillsSection) {
+        // Try to split by comma or newline
+        const skills = skillsText.split(/,|\n/).map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('-'));
+        if (skills.length > 0) skillsSection.items = skills;
       }
     }
+
+    // 3. Experience (Complex parsing)
+    const experienceText = extractSection('Experience') || extractSection('Work Experience');
+    if (experienceText) {
+      const expSection = resume.sections.find(s => s.id === 'experience');
+      if (expSection) {
+        // Simple strategy: Look for lines with dates or bold text as headers
+        // This is tricky. Let's try to map back to original items if possible, or create new ones.
+        // For robustness, let's try to find the original companies in the text and update their bullets.
+
+        expSection.items.forEach(item => {
+          // Find the block of text for this company
+          const companyRegex = new RegExp(`(.*?${item.company}.*?)(?=\n.*?\\||\n.*?\\d{4}|$)`, 'is');
+          // This is too hard to regex perfectly.
+          // Alternative: Just ask AI for JSON? No, we want robust text.
+          // Let's just use the markdown text for the "Copy" feature, and for the PDF...
+          // For the PDF, we might just have to do our best or leave the original experience if parsing fails.
+
+          // Let's try a simpler approach: Split by double newlines and look for keywords.
+          // Actually, for the PDF, if we can't parse perfectly, we might just want to put the whole text block in? No, structure is needed.
+
+          // Let's try to find the company name in the markdown
+          const companyIndex = experienceText.indexOf(item.company);
+          if (companyIndex !== -1) {
+            // Look ahead for bullets until the next double newline or header
+            const slice = experienceText.substring(companyIndex);
+            const endOfBlock = slice.search(/\n\n|#{1,3}/);
+            const block = slice.substring(0, endOfBlock === -1 ? slice.length : endOfBlock);
+            const bullets = parseBullets(block);
+            if (bullets.length > 0) item.bullets = bullets;
+          }
+        });
+      }
+    }
+
+    return { parsedResume: resume, markdown: markdown };
   }
 }

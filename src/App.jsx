@@ -33,69 +33,73 @@ const ProtectedRoute = ({ children }) => {
   return user ? children : <Navigate to="/" replace />
 }
 
+import ErrorBoundary from './components/ErrorBoundary'
+
 function App() {
   return (
-    <AuthProvider>
-      <Routes>
-        <Route path="/" element={<Layout><LandingPage /></Layout>} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/about" element={<Layout><AboutPage /></Layout>} />
-        <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
-        <Route path="/test" element={<TestPage />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<Layout><LandingPage /></Layout>} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route path="/about" element={<Layout><AboutPage /></Layout>} />
+          <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
+          <Route path="/test" element={<TestPage />} />
 
-        {/* Protected Routes */}
-        <Route path="/dashboard" element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        } />
-        <Route path="/jobs" element={
-          <ProtectedRoute>
-            <JobsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/jobs/:jobId" element={
-          <ProtectedRoute>
-            <JobDetailsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <ProfilePage />
-          </ProtectedRoute>
-        } />
-        <Route path="/resume" element={
-          <ProtectedRoute>
-            <ResumePage />
-          </ProtectedRoute>
-        } />
-        <Route path="/resume/editor" element={
-          <ProtectedRoute>
-            <ResumeEditor />
-          </ProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <SettingsPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/interview" element={
-          <ProtectedRoute>
-            <InterviewPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/tracker" element={
-          <ProtectedRoute>
-            <TrackerPage />
-          </ProtectedRoute>
-        } />
-        <Route path="/auto-fill" element={
-          <ProtectedRoute>
-            <AutoFillPage />
-          </ProtectedRoute>
-        } />
-      </Routes>
-    </AuthProvider>
+          {/* Protected Routes */}
+          <Route path="/dashboard" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/jobs" element={
+            <ProtectedRoute>
+              <JobsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/jobs/:jobId" element={
+            <ProtectedRoute>
+              <JobDetailsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/resume" element={
+            <ProtectedRoute>
+              <ResumePage />
+            </ProtectedRoute>
+          } />
+          <Route path="/resume/editor" element={
+            <ProtectedRoute>
+              <ResumeEditor />
+            </ProtectedRoute>
+          } />
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <SettingsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/interview" element={
+            <ProtectedRoute>
+              <InterviewPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/tracker" element={
+            <ProtectedRoute>
+              <TrackerPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/auto-fill" element={
+            <ProtectedRoute>
+              <AutoFillPage />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 
