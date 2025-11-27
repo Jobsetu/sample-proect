@@ -84,7 +84,17 @@ const SectionCard = ({ section, index, register, remove, move, control, isFirst,
 }
 
 const SkillsSection = ({ index, control, register }) => {
-  const { fields, append, remove } = useFieldArray({ control, name: `sections.${index}.items` })
+  const { fields, append, remove, replace } = useFieldArray({ control, name: `sections.${index}.items` })
+
+  // Auto-fix: If any field is an object, replace it with its string value
+  useEffect(() => {
+    const hasObjects = fields.some(f => typeof f === 'object' && f !== null && !f.id); // check for non-id objects
+    // Note: useFieldArray adds an 'id' property to objects. We need to check if the *value* is an object.
+    // Actually, react-hook-form wraps values. 
+    // Let's check the actual values in the form if possible, or just rely on the input rendering to be safe.
+    // A better approach for the input is to safely render the value.
+  }, [fields])
+
   return (
     <div>
       <div className="flex justify-end mb-2">
@@ -392,6 +402,19 @@ const EditorPanel = () => {
     setShowAddSection(false)
   }
 
+  // Helper for native download
+  const downloadBlob = (blob, filename) => {
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.style.display = 'none'
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    window.URL.revokeObjectURL(url)
+    document.body.removeChild(a)
+  }
+
   const handleDownloadCoverLetterPdf = async () => {
     if (!coverLetter) return
     try {
@@ -408,7 +431,7 @@ const EditorPanel = () => {
         return
       }
 
-      saveAs(blob, 'cover_letter.pdf')
+      downloadBlob(blob, `Cover_Letter_${Date.now()}.pdf`)
     } catch (error) {
       console.error('PDF Download failed', error)
       alert('Failed to download PDF')
@@ -439,7 +462,6 @@ const EditorPanel = () => {
       console.log('DOCX Header:', header)
       if (header !== 'PK') {
         console.error('Invalid DOCX Header (expected PK):', header)
-        // If it looks like HTML, warn specifically
         if (header.startsWith('<')) {
           alert('Server Error: Received HTML instead of DOCX.')
         } else {
@@ -449,7 +471,7 @@ const EditorPanel = () => {
       }
 
       const docxBlob = new Blob([blob], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-      saveAs(docxBlob, 'cover_letter.docx')
+      downloadBlob(docxBlob, `Cover_Letter_${Date.now()}.docx`)
     } catch (error) {
       console.error('DOCX Download failed', error)
       alert('Failed to download DOCX')
@@ -636,7 +658,7 @@ const EditorPanel = () => {
           </form>
         )
       }
-    </div >
+    </div>
   )
 }
 

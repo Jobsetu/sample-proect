@@ -194,7 +194,12 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                                     <Text style={styles.sectionTitle}>{section.title}</Text>
                                     <Text style={{ fontSize: 10.5, lineHeight: 1.4 }}>
                                         {Array.isArray(section.items)
-                                            ? section.items.join(', ')
+                                            ? section.items.map(item => {
+                                                if (typeof item === 'object' && item !== null) {
+                                                    return item.name || item.label || item.value || item.skill || '';
+                                                }
+                                                return item;
+                                            }).filter(Boolean).join(', ')
                                             : section.items}
                                     </Text>
                                 </View>

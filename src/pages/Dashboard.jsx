@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -41,6 +41,7 @@ const Dashboard = () => {
   const [selectedTab, setSelectedTab] = useState('recommended')
   const [generatingResumeId, setGeneratingResumeId] = useState(null)
   const [downloadingResumeId, setDownloadingResumeId] = useState(null)
+  const fileInputRef = useRef(null)
 
   // Store generated resumes per job ID
   const [generatedResumes, setGeneratedResumes] = useState({}) // { jobId: { markdown, parsedResume, pdfUrl } }
@@ -521,6 +522,86 @@ ${educationSection?.items?.[0]?.school || 'University of Technology'} | ${educat
           <p className="text-gray-400 text-lg">
             Let's find your next opportunity.
           </p>
+
+          <div className="mt-6 flex justify-center">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".pdf,.docx"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files[0]
+                if (!file) return
+
+                console.log("File selected:", file.name)
+                const formData = new FormData()
+                formData.append('file', file)
+
+                try {
+                  // Show loading state
+                  const btn = document.getElementById('upload-btn-text')
+                  if (btn) btn.innerText = 'Parsing...'
+
+                  console.log("Uploading file...")
+                  const response = await fetch('/api/upload-resume', {
+                    method: 'POST',
+                    body: formData
+                  })
+
+                  if (!response.ok) {
+                    const errText = await response.text()
+                    console.error("Upload failed response:", errText)
+                    throw new Error('Upload failed: ' + errText)
+                  }
+
+                  const data = await response.json()
+                  console.log("Upload success, data:", data)
+
+                  let parsedResume = data.output
+
+                  if (typeof parsedResume === 'string') {
+                    try {
+                      parsedResume = JSON.parse(parsedResume)
+                    } catch (e) {
+                      console.error("Failed to parse JSON response", e)
+                    }
+                  }
+
+                  // Update store
+                  setResume(parsedResume)
+
+                  // Show success message instead of navigating
+                  alert('Resume uploaded and parsed successfully! You can now generate a tailored resume or cover letter.')
+
+                  // Optional: Refresh dashboard data if needed
+                  // fetchJobs() 
+
+                } catch (error) {
+                  console.error('Upload error:', error)
+                  alert('Failed to upload resume. Please check the console for details.')
+                } finally {
+                  const btn = document.getElementById('upload-btn-text')
+                  if (btn) btn.innerText = 'Upload Resume'
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = ''
+                  }
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                console.log("Upload button clicked")
+                fileInputRef.current?.click()
+              }}
+              className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-3 group"
+            >
+              <div className="bg-blue-500/20 p-2 rounded-lg group-hover:bg-blue-500/30 transition-colors">
+                <FileText className="w-5 h-5 text-blue-400" />
+              </div>
+              <span id="upload-btn-text">Upload Resume</span>
+              <span className="text-xs text-gray-400 bg-black/20 px-2 py-1 rounded">PDF / DOCX</span>
+            </button>
+          </div>
         </motion.div>
 
         <motion.div
