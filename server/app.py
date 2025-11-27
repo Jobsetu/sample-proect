@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from bytez import Bytez
 import os
@@ -206,6 +206,152 @@ def mock_interview():
 
     except Exception as e:
         print(f"Exception: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/download-docx', methods=['POST'])
+def download_docx():
+    try:
+        from docx import Document
+        from docx.shared import Pt, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        import io
+
+        data = request.json
+        resume = data.get('resume', {})
+        
+        doc = Document()
+        
+        # Styles
+        style = doc.styles['Normal']
+        font = style.font
+        font.name = 'Arial'
+        font.size = Pt(10)
+
+        # Header
+        personal = resume.get('personalInfo', {})
+        name = personal.get('name', 'Your Name')
+        header = doc.add_paragraph()
+        header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        name_run = header.add_run(name)
+        name_run.bold = True
+        name_run.font.size = Pt(16)
+        
+        contact_info = []
+        if personal.get('email'): contact_info.append(personal['email'])
+        if personal.get('phone'): contact_info.append(personal['phone'])
+        if personal.get('location'): contact_info.append(personal['location'])
+        if personal.get('linkedin'): contact_info.append(personal['linkedin'])
+        
+        if contact_info:
+            contact_p = doc.add_paragraph(' | '.join(contact_info))
+            contact_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            contact_p.paragraph_format.space_after = Pt(12)
+
+        # Sections
+        for section in resume.get('sections', []):
+            # Title
+            doc.add_heading(section.get('title', '').upper(), level=2)
+            
+            # Content
+            if section.get('id') == 'summary' or section.get('content'):
+                doc.add_paragraph(section.get('content', ''))
+            
+            elif section.get('id') == 'skills':
+                items = section.get('items', [])
+                if isinstance(items, list):
+                    doc.add_paragraph(', '.join(items))
+                else:
+                    doc.add_paragraph(str(items))
+            
+            elif section.get('items'):
+                for item in section.get('items', []):
+                    # Role/Title
+                    p = doc.add_paragraph()
+                    title = item.get('role') or item.get('title') or item.get('degree') or ''
+                    company = item.get('company') or item.get('school') or item.get('subtitle') or ''
+                    date = item.get('startDate') or item.get('year') or ''
+                    if item.get('endDate'): date += f" - {item.get('endDate')}"
+                    
+                    run = p.add_run(title)
+                    run.bold = True
+                    if company: p.add_run(f" | {company}")
+                    if date: p.add_run(f" | {date}")
+                    
+                    # Bullets
+                    if item.get('bullets'):
+                        for bullet in item.get('bullets', []):
+                            doc.add_paragraph(bullet, style='List Bullet')
+                    
+                    # Description
+                    if item.get('description'):
+                        doc.add_paragraph(item.get('description'))
+
+        # Save to buffer
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0, 2)
+        size = buffer.tell()
+        buffer.seek(0)
+        
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name='resume.docx',
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            max_age=0
+        )
+
+    except Exception as e:
+        print(f"DOCX Generation Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/download-cover-letter-docx', methods=['POST'])
+def download_cover_letter_docx():
+    try:
+        from docx import Document
+        from docx.shared import Pt
+        import io
+
+        data = request.json
+        cover_letter_text = data.get('text', '')
+        
+        doc = Document()
+        style = doc.styles['Normal']
+        font = style.font
+        font.name = 'Arial'
+        font.size = Pt(11)
+
+        # Sanitize text to remove characters that might break XML
+        def sanitize(text):
+            if not text: return ""
+            # Keep only printable characters and newlines
+            return "".join(ch for ch in text if ch == '\n' or (ord(ch) >= 32 and ord(ch) != 127))
+
+        # Split by newlines and add paragraphs
+        for line in cover_letter_text.split('\n'):
+            clean_line = sanitize(line.strip())
+            if clean_line:
+                doc.add_paragraph(clean_line)
+            else:
+                # Add empty paragraph for spacing
+                doc.add_paragraph('')
+
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0, 2) # Seek to end
+        size = buffer.tell()
+        buffer.seek(0)
+        
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name='cover_letter.docx',
+            mimetype='application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            max_age=0
+        )
+
+    except Exception as e:
+        print(f"Cover Letter DOCX Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/health', methods=['GET'])

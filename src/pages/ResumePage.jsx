@@ -12,6 +12,7 @@ import EditorPanel from '../components/EditorPanel'
 import PDFPreview from '../components/PDFPreview'
 import TemplateSwitcher from '../components/TemplateSwitcher'
 import ExportButtons from '../components/ExportButtons'
+import DownloadToolbar from '../components/DownloadToolbar'
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -1013,8 +1014,11 @@ const ResumePage = () => {
                   </PanelResizeHandle>
 
                   <Panel defaultSize={50} minSize={30} className="h-full">
-                    <div className="h-full overflow-hidden flex flex-col bg-slate-100">
-                      <PDFPreview />
+                    <div className="h-full flex flex-col bg-slate-100">
+                      <DownloadToolbar />
+                      <div className="flex-1 overflow-hidden">
+                        <PDFPreview />
+                      </div>
                     </div>
                   </Panel>
                 </PanelGroup>

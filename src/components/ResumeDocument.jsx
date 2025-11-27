@@ -3,7 +3,7 @@ import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 
 // Base styles common to all templates
 const baseStyles = StyleSheet.create({
-    page: { padding: 30, fontSize: 11, color: '#333', fontFamily: 'Helvetica' },
+    page: { padding: 20, fontSize: 10, color: '#333', fontFamily: 'Helvetica' },
     bullet: { marginLeft: 8, fontSize: 10, color: '#444' }
 })
 
@@ -54,11 +54,11 @@ const professionalStyles = StyleSheet.create({
 
 // 5. Stitch Template (Academic/Professional)
 const stitchStyles = StyleSheet.create({
-    page: { padding: 30, fontSize: 10.5, fontFamily: 'Times-Roman', color: '#000' },
+    page: { padding: 20, fontSize: 10, fontFamily: 'Times-Roman', color: '#000' },
     header: { marginBottom: 10, textAlign: 'center' },
     name: { fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 4 },
     contact: { fontSize: 10, flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap' },
-    section: { marginBottom: 10 },
+    section: { marginBottom: 8 },
     sectionTitle: {
         fontSize: 11,
         fontWeight: 'bold',
@@ -109,75 +109,119 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                         <Text style={styles.contact}>{contactInfo}</Text>
                     </View>
 
-                    {/* Education First for Academic Style */}
-                    {getSection('education').items && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Education</Text>
-                            {getSection('education').items.map((item, i) => (
-                                <View key={i} style={{ marginBottom: 4 }}>
-                                    <View style={styles.entryHeader}>
-                                        <Text style={styles.entryTitle}>{item.school}</Text>
-                                        <Text style={styles.entryDate}>{item.year}</Text>
-                                    </View>
-                                    <View style={styles.entryHeader}>
-                                        <Text style={styles.entrySubtitle}>{item.degree}</Text>
-                                        <Text style={styles.entrySubtitle}>{item.location}</Text>
-                                    </View>
-                                </View>
-                            ))}
-                        </View>
-                    )}
+                    {/* Dynamic Sections */}
+                    {resume.sections?.map(section => {
+                        const type = section.type || section.id
 
-                    {/* Experience */}
-                    {getSection('experience').items && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Professional Experience</Text>
-                            {getSection('experience').items.map((item, i) => (
-                                <View key={i} style={{ marginBottom: 8 }}>
-                                    <View style={styles.entryHeader}>
-                                        <Text style={styles.entryTitle}>{item.role} | {item.company}</Text>
-                                        <Text style={styles.entryDate}>{item.startDate} - {item.endDate}</Text>
-                                    </View>
-                                    {item.bullets?.map((b, j) => (
-                                        <View key={j} style={{ flexDirection: 'row' }}>
-                                            <Text style={{ fontSize: 10.5, marginRight: 5 }}>•</Text>
-                                            <Text style={{ fontSize: 10.5, flex: 1, lineHeight: 1.3 }}>{b}</Text>
+                        // Summary
+                        if (type === 'summary' || section.id === 'summary') {
+                            return section.content ? (
+                                <View key={section.id} style={styles.section}>
+                                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                                    <Text style={{ lineHeight: 1.3 }}>{section.content}</Text>
+                                </View>
+                            ) : null
+                        }
+
+                        // Education
+                        if (type.includes('education') || section.id === 'education') {
+                            return section.items ? (
+                                <View key={section.id} style={styles.section}>
+                                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                                    {section.items.map((item, i) => (
+                                        <View key={i} style={{ marginBottom: 4 }}>
+                                            <View style={styles.entryHeader}>
+                                                <Text style={styles.entryTitle}>{item.school}</Text>
+                                                <Text style={styles.entryDate}>{item.year}</Text>
+                                            </View>
+                                            <View style={styles.entryHeader}>
+                                                <Text style={styles.entrySubtitle}>{item.degree}</Text>
+                                                <Text style={styles.entrySubtitle}>{item.location}</Text>
+                                            </View>
                                         </View>
                                     ))}
                                 </View>
-                            ))}
-                        </View>
-                    )}
+                            ) : null
+                        }
 
-                    {/* Projects */}
-                    {getSection('projects').items && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Projects</Text>
-                            {getSection('projects').items.map((item, i) => (
-                                <View key={i} style={{ marginBottom: 6 }}>
-                                    <Text style={styles.entryTitle}>{item.title}</Text>
-                                    <Text style={{ fontSize: 10.5, marginBottom: 2 }}>{item.description}</Text>
-                                    {item.technologies && (
-                                        <Text style={{ fontSize: 10.5, fontStyle: 'italic' }}>
-                                            Technologies: {item.technologies.join(', ')}
-                                        </Text>
-                                    )}
+                        // Experience
+                        if (type.includes('experience') || section.id === 'experience') {
+                            return section.items ? (
+                                <View key={section.id} style={styles.section}>
+                                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                                    {section.items.map((item, i) => (
+                                        <View key={i} style={{ marginBottom: 8 }}>
+                                            <View style={styles.entryHeader}>
+                                                <Text style={styles.entryTitle}>{item.role} | {item.company}</Text>
+                                                <Text style={styles.entryDate}>{item.startDate} - {item.endDate}</Text>
+                                            </View>
+                                            {item.bullets?.map((b, j) => (
+                                                <View key={j} style={{ flexDirection: 'row' }}>
+                                                    <Text style={{ fontSize: 10.5, marginRight: 5 }}>•</Text>
+                                                    <Text style={{ fontSize: 10.5, flex: 1, lineHeight: 1.3 }}>{b}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    ))}
                                 </View>
-                            ))}
-                        </View>
-                    )}
+                            ) : null
+                        }
 
-                    {/* Skills */}
-                    {getSection('skills').items && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Skills</Text>
-                            <Text style={{ fontSize: 10.5, lineHeight: 1.4 }}>
-                                {Array.isArray(getSection('skills').items)
-                                    ? getSection('skills').items.join(', ')
-                                    : getSection('skills').items}
-                            </Text>
-                        </View>
-                    )}
+                        // Projects
+                        if (type.includes('projects') || section.id === 'projects') {
+                            return section.items ? (
+                                <View key={section.id} style={styles.section}>
+                                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                                    {section.items.map((item, i) => (
+                                        <View key={i} style={{ marginBottom: 6 }}>
+                                            <Text style={styles.entryTitle}>{item.title}</Text>
+                                            <Text style={{ fontSize: 10.5, marginBottom: 2 }}>{item.description}</Text>
+                                            {item.technologies && (
+                                                <Text style={{ fontSize: 10.5, fontStyle: 'italic' }}>
+                                                    Technologies: {item.technologies.join(', ')}
+                                                </Text>
+                                            )}
+                                        </View>
+                                    ))}
+                                </View>
+                            ) : null
+                        }
+
+                        // Skills
+                        if (type.includes('skills') || section.id === 'skills') {
+                            return section.items ? (
+                                <View key={section.id} style={styles.section}>
+                                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                                    <Text style={{ fontSize: 10.5, lineHeight: 1.4 }}>
+                                        {Array.isArray(section.items)
+                                            ? section.items.join(', ')
+                                            : section.items}
+                                    </Text>
+                                </View>
+                            ) : null
+                        }
+
+                        // Generic / Custom
+                        if (section.items) {
+                            return (
+                                <View key={section.id} style={styles.section}>
+                                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                                    {section.items.map((item, i) => (
+                                        <View key={i} style={{ marginBottom: 6 }}>
+                                            <View style={styles.entryHeader}>
+                                                <Text style={styles.entryTitle}>{item.title || item.degree}</Text>
+                                                <Text style={styles.entryDate}>{item.year}</Text>
+                                            </View>
+                                            <Text style={styles.entrySubtitle}>{item.school || item.subtitle}</Text>
+                                            {item.description && <Text style={{ fontSize: 10, marginTop: 2 }}>{item.description}</Text>}
+                                        </View>
+                                    ))}
+                                </View>
+                            )
+                        }
+
+                        return null
+                    })}
 
                     {/* Summary (Optional, at bottom or top? User image didn't show summary, but we have it. Let's put it at top if exists, or omit if strictly following image. Let's keep it but maybe minimal) */}
                     {/* Actually, standard academic resumes often omit summary or put it at top. Let's put it at top if it exists. */}
