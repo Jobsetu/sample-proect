@@ -1,0 +1,41 @@
+JANE SMITH
+jane.smith@email.com | (555) 123-4567 | San Francisco, CA
+LinkedIn: linkedin.com/in/janesmith | GitHub: github.com/janesmith
+
+PROFESSIONAL SUMMARY
+Senior Software Engineer with 5+ years of experience building scalable web applications and cloud infrastructure. Expert in Python, JavaScript, and AWS. Proven track record of leading teams and delivering high-impact projects.
+
+TECHNICAL SKILLS
+Languages: Python, JavaScript, TypeScript, Java, SQL
+Frameworks: React, Node.js, Django, Flask, Express.js
+Cloud & DevOps: AWS (EC2, S3, Lambda), Docker, Kubernetes, CI/CD, Terraform
+Databases: PostgreSQL, MongoDB, Redis, MySQL
+Tools: Git, JIRA, VS Code, Postman
+
+PROFESSIONAL EXPERIENCE
+
+Senior Software Engineer | TechStart Inc | San Francisco, CA | Jan 2021 - Present
+- Led development of microservices architecture serving 2M+ daily active users
+- Reduced API response time by 60% through optimization and caching strategies
+- Mentored team of 5 junior engineers and conducted code reviews
+- Implemented automated testing pipeline, increasing code coverage from 45% to 85%
+
+Software Engineer | DataCorp | Remote | Jun 2019 - Dec 2020
+- Developed RESTful APIs using Python/Flask for data analytics platform
+- Built React-based dashboard for visualizing real-time metrics
+- Collaborated with product team to define technical requirements
+- Migrated legacy systems to cloud-based infrastructure on AWS
+
+Junior Developer | StartupXYZ | Palo Alto, CA | Jul 2018 - May 2019
+- Contributed to full-stack web development using React and Node.js
+- Participated in daily standups and agile development practices
+- Fixed bugs and implemented new features based on user feedback
+
+EDUCATION
+
+Bachelor of Science in Computer Science | Stanford University | 2018
+GPA: 3.8/4.0 | Relevant Coursework: Algorithms, Data Structures, Machine Learning, Database Systems
+
+CERTIFICATIONS
+- AWS Certified Solutions Architect - Associate (2022)
+- Certified Kubernetes Administrator - CKA (2021)

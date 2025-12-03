@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from bytez import Bytez
 import os
+import json
 from pdfminer.high_level import extract_text
 from docx import Document as DocxDocument
 
@@ -38,40 +39,67 @@ def upload_resume():
                     os.remove(temp_path)
                     
         elif filename.endswith('.docx'):
-            doc = DocxDocument(file)
-            text = "\n".join([para.text for para in doc.paragraphs])
+            try:
+                doc = DocxDocument(file)
+                text = "\n".join([para.text for para in doc.paragraphs])
+                print(f"[UPLOAD] DOCX extraction: {len(text)} chars from {len(doc.paragraphs)} paragraphs")
+            except Exception as e:
+                print(f"[UPLOAD] DOCX extraction error: {e}")
+                return jsonify({'error': f'Failed to parse DOCX file: {str(e)}'}), 400
+            
+        elif filename.endswith('.txt'):
+            try:
+                text = file.read().decode('utf-8', errors='ignore')
+                print(f"[UPLOAD] TXT extraction: {len(text)} chars")
+            except Exception as e:
+                print(f"[UPLOAD] TXT extraction error: {e}")
+                return jsonify({'error': f'Failed to parse TXT file: {str(e)}'}), 400
             
         else:
-            return jsonify({'error': 'Unsupported file format. Please upload PDF or DOCX'}), 400
+            return jsonify({'error': 'Unsupported file format. Please upload PDF, DOCX, or TXT'}), 400
             
+        print(f"[UPLOAD] Total extracted text length: {len(text)}, stripped: {len(text.strip())}")
+        
         if not text.strip():
-            return jsonify({'error': 'Could not extract text from file'}), 400
+            return jsonify({
+                'error': 'Could not extract text from file. This may be: (1) An image-based/scanned PDF that requires OCR, (2) An empty file, or (3) A file with unreadable encoding. Please try a different file or convert your PDF to text-based format.'
+            }), 400
             
         # Use AI to parse the text into our JSON structure
         print(f"[UPLOAD] Extracted {len(text)} chars. Parsing with AI...")
         
         prompt = f"""
-        You are a resume parser. Extract the following information from the resume text below and return it as a JSON object.
+        You are an expert resume parser. Your task is to extract structured information from ANY resume format.
+        
+        IMPORTANT PARSING RULES:
+        1. Handle multi-column layouts - read left-to-right, top-to-bottom
+        2. Ignore headers, footers, and page numbers
+        3. Handle tables and formatted text
+        4. Extract data even from minimal or sparse resumes
+        5. If information is missing, use null or empty arrays (never skip required fields)
+        6. Dates can be in any format (MM/YYYY, Month Year, etc.) - normalize if possible
+        7. Skills can be in bullet lists, comma-separated, or paragraphs - extract ALL of them
+        8. Experience bullets should be action-oriented achievements
         
         Resume Text:
-        {text[:10000]}  # Limit text length to avoid token limits
+        {text[:15000]}
         
-        Required JSON Structure:
+        Return ONLY valid JSON in this EXACT structure:
         {{
             "personalInfo": {{
-                "name": "Full Name",
-                "email": "email@example.com",
-                "phone": "Phone Number",
-                "location": "City, State",
-                "linkedin": "LinkedIn URL",
-                "github": "GitHub URL",
-                "title": "Current Job Title"
+                "name": "Full Name (REQUIRED - find the largest/bolded text at top)",
+                "email": "email@example.com (extract from text)",
+                "phone": "Phone Number (extract from text, null if not found)",
+                "location": "City, State (extract from text, null if not found)",
+                "linkedin": "LinkedIn URL (null if not found)",
+                "github": "GitHub URL (null if not found)",
+                "title": "Current/Most Recent Job Title (null if not found)"
             }},
             "sections": [
                 {{
                     "id": "summary",
                     "title": "Professional Summary",
-                    "content": "Summary text..."
+                    "content": "Extract summary/objective/profile section. If none, create brief one from experience. Max 3 sentences."
                 }},
                 {{
                     "id": "experience",
@@ -80,10 +108,10 @@ def upload_resume():
                         {{
                             "company": "Company Name",
                             "role": "Job Title",
-                            "location": "Location",
-                            "startDate": "Start Date",
-                            "endDate": "End Date",
-                            "bullets": ["Achievement 1", "Achievement 2"]
+                            "location": "City, State or null",
+                            "startDate": "YYYY or Month YYYY",
+                            "endDate": "YYYY or Month YYYY or Present",
+                            "bullets": ["Action verb + achievement/responsibility with metrics if available"]
                         }}
                     ]
                 }},
@@ -92,33 +120,26 @@ def upload_resume():
                     "title": "Education",
                     "items": [
                         {{
-                            "school": "University Name",
-                            "degree": "Degree Name",
+                            "school": "University/Institution Name",
+                            "degree": "Degree Type (BS, MS, PhD, etc.)",
                             "field": "Field of Study",
-                            "graduationDate": "Year"
+                            "graduationDate": "YYYY"
                         }}
                     ]
                 }},
                 {{
                     "id": "skills",
                     "title": "Skills",
-                    "items": ["Skill 1", "Skill 2"]
-                }},
-                {{
-                    "id": "projects",
-                    "title": "Projects",
-                    "items": [
-                        {{
-                            "title": "Project Name",
-                            "description": "Project Description",
-                            "technologies": ["Tech 1", "Tech 2"]
-                        }}
-                    ]
+                    "items": ["Skill1", "Skill2", "Skill3"]
                 }}
             ]
         }}
         
-        Return ONLY valid JSON. Do not include markdown formatting.
+        CRITICAL: 
+        - Return ONLY the JSON object, no explanations
+        - Skills MUST be a flat array of strings
+        - If a section is empty, include it with empty array/null
+        - Extract as much data as possible from the text
         """
         
         response = model.run([{"role": "user", "content": prompt}])
@@ -202,8 +223,9 @@ def generate_resume():
         job_description = data.get('jobDescription', '')
         job_title = data.get('jobTitle', 'Position')
         company_name = data.get('companyName', 'Company')
+        generation_mode = data.get('mode', 'json') # 'json' or 'markdown' or 'custom'
         
-        print(f"[RESUME] Generating resume for {job_title} at {company_name}")
+        print(f"[RESUME] Generating resume for {job_title} at {company_name} (Mode: {generation_mode})")
         
         # Parse user resume
         if not user_resume or not isinstance(user_resume, dict):
@@ -221,37 +243,63 @@ def generate_resume():
         
         # Try AI generation first
         try:
-            # Construct a better prompt that explicitly asks for skills from both sources
-            prompt_content = f"""
-            You are an expert resume writer. Create a tailored resume for the following job.
+            prompt_content = ""
             
-            JOB DESCRIPTION:
-            {job_description}
-            
-            CANDIDATE PROFILE:
-            {json.dumps(parsed_resume)}
-            
-            USER INSTRUCTIONS:
-            {user_input}
-            
-            REQUIREMENTS:
-            1. Extract relevant skills from BOTH the Job Description and the Candidate Profile.
-            2. The 'skills' section MUST be a simple list of strings (e.g., ["Python", "React"]). NO OBJECTS.
-            3. Tailor the Professional Summary to match the job.
-            4. Highlight relevant experience.
-            
-            Return ONLY valid JSON in the following structure:
-            {{
-                "personalInfo": {{ ... }},
-                "sections": [
-                    {{ "id": "summary", "title": "Professional Summary", "content": "..." }},
-                    {{ "id": "skills", "title": "Skills", "items": ["Skill1", "Skill2"] }},
-                    {{ "id": "experience", "title": "Experience", "items": [ ... ] }},
-                    {{ "id": "education", "title": "Education", "items": [ ... ] }},
-                    {{ "id": "projects", "title": "Projects", "items": [ ... ] }}
-                ]
-            }}
-            """
+            if generation_mode == 'markdown':
+                # In markdown mode, we trust the input prompt from the frontend (which includes the full prompt)
+                # But we should ensure we have the context if the frontend didn't fully bake it in, 
+                # though GeminiService.js seems to bake it in.
+                # Let's check if input is long enough to be a full prompt
+                if len(user_input) > 100:
+                    prompt_content = user_input
+                else:
+                    # Fallback if input is short
+                    prompt_content = f"""
+                    You are an expert resume writer. Create a tailored resume in Markdown format.
+                    
+                    JOB DESCRIPTION:
+                    {job_description}
+                    
+                    CANDIDATE PROFILE:
+                    {json.dumps(parsed_resume)}
+                    
+                    INSTRUCTIONS:
+                    {user_input}
+                    
+                    Return a complete, professional resume in Markdown.
+                    """
+            else:
+                # Default JSON mode (for structural updates)
+                prompt_content = f"""
+                You are an expert resume writer. Create a tailored resume for the following job.
+                
+                JOB DESCRIPTION:
+                {job_description}
+                
+                CANDIDATE PROFILE:
+                {json.dumps(parsed_resume)}
+                
+                USER INSTRUCTIONS:
+                {user_input}
+                
+                REQUIREMENTS:
+                1. Extract relevant skills from BOTH the Job Description and the Candidate Profile.
+                2. The 'skills' section MUST be a simple list of strings (e.g., ["Python", "React"]). NO OBJECTS.
+                3. Tailor the Professional Summary to match the job.
+                4. Highlight relevant experience.
+                
+                Return ONLY valid JSON in the following structure:
+                {{
+                    "personalInfo": {{ ... }},
+                    "sections": [
+                        {{ "id": "summary", "title": "Professional Summary", "content": "..." }},
+                        {{ "id": "skills", "title": "Skills", "items": ["Skill1", "Skill2"] }},
+                        {{ "id": "experience", "title": "Experience", "items": [ ... ] }},
+                        {{ "id": "education", "title": "Education", "items": [ ... ] }},
+                        {{ "id": "projects", "title": "Projects", "items": [ ... ] }}
+                    ]
+                }}
+                """
             
             print(f"[RESUME] Calling AI model with input length: {len(prompt_content)}")
             response = model.run([
@@ -374,7 +422,15 @@ def generate_resume():
         import traceback
         traceback.print_exc()
         
-        # Last resort fallback
+        # Last resort fallback - use local variables instead of 'data'
+        try:
+            # Try to get job_title and company_name if they exist in local scope
+            fallback_title = locals().get('job_title', 'technology')
+            fallback_company = locals().get('company_name', 'Company')
+        except:
+            fallback_title = 'technology'
+            fallback_company = 'Company'
+            
         return jsonify({
             "output": f"""# Professional Resume
 
@@ -382,7 +438,7 @@ def generate_resume():
 
 ## PROFESSIONAL SUMMARY
 
-Experienced professional seeking opportunities in {data.get('jobTitle', 'technology')}.
+Experienced professional seeking opportunities in {fallback_title}.
 
 ## SKILLS
 
@@ -390,7 +446,7 @@ Python, JavaScript, React, Node.js, SQL, AWS, Docker, Git
 
 ## EXPERIENCE
 
-**Software Engineer** | **Technology Company** | 2020 - Present
+**Software Engineer** | **{fallback_company}** | 2020 - Present
 
 - Developed and maintained production systems
 - Collaborated with cross-functional teams

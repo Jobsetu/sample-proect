@@ -33,6 +33,7 @@ import { useJobDescriptionStore } from '../stores/useJobDescriptionStore'
 import { pdf } from '@react-pdf/renderer'
 import ResumeDocument from '../components/ResumeDocument'
 import { ResumeExportService } from '../lib/resumeExportService'
+import { ToastContainer } from '../components/ToastNotification'
 
 const Dashboard = () => {
   const [user, setUser] = useState(null)
@@ -42,6 +43,11 @@ const Dashboard = () => {
   const [generatingResumeId, setGeneratingResumeId] = useState(null)
   const [downloadingResumeId, setDownloadingResumeId] = useState(null)
   const fileInputRef = useRef(null)
+
+  // Toast notifications
+  const [toasts, setToasts] = useState([])
+  const [parsedResumePreview, setParsedResumePreview] = useState(null)
+  const [showResumePreview, setShowResumePreview] = useState(false)
 
   // Store generated resumes per job ID
   const [generatedResumes, setGeneratedResumes] = useState({}) // { jobId: { markdown, parsedResume, pdfUrl } }
@@ -61,6 +67,16 @@ const Dashboard = () => {
   const navigate = useNavigate()
   const { resume, setResume } = useResumeStore()
   const { setJobDescription } = useJobDescriptionStore()
+
+  // Toast helper functions
+  const addToast = (type, message, duration = 5000) => {
+    const id = Date.now() + Math.random()
+    setToasts(prev => [...prev, { id, type, message, duration }])
+  }
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id))
+  }
 
   useEffect(() => {
     getCurrentUser()
@@ -451,688 +467,755 @@ ${educationSection?.items?.[0]?.school || 'University of Technology'} | ${educat
   }
 
   return (
-    <div className="min-h-screen bg-dark-900 relative">
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="bg-dark-800/80 backdrop-blur-lg border-b border-white/10"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-8">
-              <Link to="/dashboard">
-                <Logo size="md" />
-              </Link>
-              <nav className="hidden md:flex space-x-6">
-                <Link to="/jobs" className="flex items-center space-x-2 text-primary-400 font-medium">
-                  <Briefcase className="w-5 h-5" />
-                  <span>Jobs</span>
+    <>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      <div className="min-h-screen bg-dark-900 relative">
+        <motion.header
+          initial={{ y: -100 }}
+          animate={{ y: 0 }}
+          className="bg-dark-800/80 backdrop-blur-lg border-b border-white/10"
+        >
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-8">
+                <Link to="/dashboard">
+                  <Logo size="md" />
                 </Link>
-                <Link to="/tracker" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
-                  <TrendingUp className="w-5 h-5" />
-                  <span>Tracker</span>
-                </Link>
-                <Link to="/profile" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
-                  <User className="w-5 h-5" />
-                  <span>Profile</span>
-                </Link>
-                <Link to="/resume?tab=builder" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
-                  <FileText className="w-5 h-5" />
-                  <span>Resume Builder</span>
-                </Link>
-                <Link to="/settings" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
-                  <Settings className="w-5 h-5" />
-                  <span>Settings</span>
-                </Link>
-              </nav>
-            </div>
+                <nav className="hidden md:flex space-x-6">
+                  <Link to="/jobs" className="flex items-center space-x-2 text-primary-400 font-medium">
+                    <Briefcase className="w-5 h-5" />
+                    <span>Jobs</span>
+                  </Link>
+                  <Link to="/tracker" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
+                    <TrendingUp className="w-5 h-5" />
+                    <span>Tracker</span>
+                  </Link>
+                  <Link to="/profile" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
+                    <User className="w-5 h-5" />
+                    <span>Profile</span>
+                  </Link>
+                  <Link to="/resume?tab=builder" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
+                    <FileText className="w-5 h-5" />
+                    <span>Resume Builder</span>
+                  </Link>
+                  <Link to="/settings" className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
+                    <Settings className="w-5 h-5" />
+                    <span>Settings</span>
+                  </Link>
+                </nav>
+              </div>
 
-            <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-300 hover:text-white transition-colors">
-                <Search className="w-5 h-5" />
-              </button>
-              <button className="p-2 text-gray-300 hover:text-white transition-colors">
-                <Bell className="w-5 h-5" />
-              </button>
-              <div className="flex items-center space-x-2">
-                <Avatar
-                  name={user?.user_metadata?.full_name || user?.email}
-                  email={user?.email}
-                  size={32}
-                  style="avataaars"
-                />
-                <span className="text-gray-300 text-sm">
-                  {user?.user_metadata?.full_name || user?.email || 'User'}
-                </span>
+              <div className="flex items-center space-x-4">
+                <button className="p-2 text-gray-300 hover:text-white transition-colors">
+                  <Search className="w-5 h-5" />
+                </button>
+                <button className="p-2 text-gray-300 hover:text-white transition-colors">
+                  <Bell className="w-5 h-5" />
+                </button>
+                <div className="flex items-center space-x-2">
+                  <Avatar
+                    name={user?.user_metadata?.full_name || user?.email}
+                    email={user?.email}
+                    size={32}
+                    style="avataaars"
+                  />
+                  <span className="text-gray-300 text-sm">
+                    {user?.user_metadata?.full_name || user?.email || 'User'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </motion.header>
+        </motion.header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 text-center"
-        >
-          <h2 className="text-3xl font-bold text-white mb-2">
-            Welcome back, {user?.user_metadata?.full_name || 'User'}!
-          </h2>
-          <p className="text-gray-400 text-lg">
-            Let's find your next opportunity.
-          </p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 text-center"
+          >
+            <h2 className="text-3xl font-bold text-white mb-2">
+              Welcome back, {user?.user_metadata?.full_name || 'User'}!
+            </h2>
+            <p className="text-gray-400 text-lg">
+              Let's find your next opportunity.
+            </p>
 
-          <div className="mt-6 flex justify-center">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".pdf,.docx"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files[0]
-                if (!file) return
+            <div className="mt-6 flex justify-center">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".pdf,.docx,.txt"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files[0]
+                  if (!file) return
 
-                console.log("File selected:", file.name)
-                const formData = new FormData()
-                formData.append('file', file)
+                  console.log("File selected:", file.name)
+                  const formData = new FormData()
+                  formData.append('file', file)
 
-                try {
-                  // Show loading state
-                  const btn = document.getElementById('upload-btn-text')
-                  if (btn) btn.innerText = 'Parsing...'
-
-                  console.log("Uploading file...")
-                  const response = await fetch('/api/upload-resume', {
-                    method: 'POST',
-                    body: formData
-                  })
-
-                  if (!response.ok) {
-                    const errText = await response.text()
-                    console.error("Upload failed response:", errText)
-                    throw new Error('Upload failed: ' + errText)
+                  // Get user ID if available
+                  if (user?.id) {
+                    formData.append('userId', user.id)
                   }
 
-                  const data = await response.json()
-                  console.log("Upload success, data:", data)
+                  try {
+                    // Show loading state
+                    const btn = document.getElementById('upload-btn-text')
+                    if (btn) btn.innerText = 'Parsing...'
 
-                  let parsedResume = data.output
+                    console.log("Uploading file...")
+                    const response = await fetch('/api/upload-resume', {
+                      method: 'POST',
+                      body: formData
+                    })
 
-                  if (typeof parsedResume === 'string') {
-                    try {
-                      parsedResume = JSON.parse(parsedResume)
-                    } catch (e) {
-                      console.error("Failed to parse JSON response", e)
+                    if (!response.ok) {
+                      const errText = await response.text()
+                      console.error("Upload failed response:", errText)
+                      throw new Error('Upload failed: ' + errText)
+                    }
+
+                    const data = await response.json()
+                    console.log("Upload success, data:", data)
+
+                    let parsedResume = data.output
+
+                    if (typeof parsedResume === 'string') {
+                      try {
+                        parsedResume = JSON.parse(parsedResume)
+                      } catch (e) {
+                        console.error("Failed to parse JSON response", e)
+                        // If it's not JSON, it might be raw text, but we expect JSON from backend
+                        // If it is raw text, we might want to wrap it
+                        if (parsedResume.length > 0 && !parsedResume.trim().startsWith('{')) {
+                          // It's likely raw text that failed to parse as JSON by the backend AI
+                          // We can't do much but alert the user or try to use it as summary
+                          console.warn("Received raw text instead of JSON")
+                        }
+                      }
+                    }
+
+                    // Update store
+                    setResume(parsedResume)
+
+                    // Show parsed resume preview
+                    const preview = {
+                      name: parsedResume?.personalInfo?.name || 'Unknown',
+                      email: parsedResume?.personalInfo?.email || 'N/A',
+                      skillsCount: parsedResume?.sections?.find(s => s.id === 'skills')?.items?.length || 0,
+                      experienceCount: parsedResume?.sections?.find(s => s.id === 'experience')?.items?.length || 0,
+                      educationCount: parsedResume?.sections?.find(s => s.id === 'education')?.items?.length || 0
+                    }
+                    setParsedResumePreview(preview)
+                    setShowResumePreview(true)
+
+                    // Auto-hide preview after 10 seconds
+                    setTimeout(() => setShowResumePreview(false), 10000)
+
+                    // Show success toast instead of alert
+                    addToast('success', '✓ Resume uploaded successfully! Data has been parsed and saved.')
+
+                  } catch (error) {
+                    console.error('Upload error:', error)
+                    addToast('error', `Failed to upload resume: ${error.message}`)
+                  } finally {
+                    const btn = document.getElementById('upload-btn-text')
+                    if (btn) btn.innerText = 'Upload Resume'
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = ''
                     }
                   }
-
-                  // Update store
-                  setResume(parsedResume)
-
-                  // Show success message instead of navigating
-                  alert('Resume uploaded and parsed successfully! You can now generate a tailored resume or cover letter.')
-
-                  // Optional: Refresh dashboard data if needed
-                  // fetchJobs() 
-
-                } catch (error) {
-                  console.error('Upload error:', error)
-                  alert('Failed to upload resume. Please check the console for details.')
-                } finally {
-                  const btn = document.getElementById('upload-btn-text')
-                  if (btn) btn.innerText = 'Upload Resume'
-                  if (fileInputRef.current) {
-                    fileInputRef.current.value = ''
-                  }
-                }
-              }}
-            />
-            <button
-              onClick={() => {
-                console.log("Upload button clicked")
-                fileInputRef.current?.click()
-              }}
-              className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-3 group"
-            >
-              <div className="bg-blue-500/20 p-2 rounded-lg group-hover:bg-blue-500/30 transition-colors">
-                <FileText className="w-5 h-5 text-blue-400" />
-              </div>
-              <span id="upload-btn-text">Upload Resume</span>
-              <span className="text-xs text-gray-400 bg-black/20 px-2 py-1 rounded">PDF / DOCX</span>
-            </button>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="w-full max-w-4xl mb-12"
-        >
-          <JobTailor />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full"
-        >
-          <div className="glass-effect rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Jobs Applied</p>
-                <p className="text-2xl font-bold text-white">0</p>
-              </div>
-              <Briefcase className="w-8 h-8 text-primary-400" />
-            </div>
-          </div>
-
-          <div className="glass-effect rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Profile Views</p>
-                <p className="text-2xl font-bold text-white">0</p>
-              </div>
-              <Users className="w-8 h-8 text-green-400" />
-            </div>
-          </div>
-
-          <div className="glass-effect rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Interviews</p>
-                <p className="text-2xl font-bold text-white">0</p>
-              </div>
-              <CheckCircle className="w-8 h-8 text-blue-400" />
-            </div>
-          </div>
-
-          <div className="glass-effect rounded-xl p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 text-sm">Match Score</p>
-                <p className="text-2xl font-bold text-white">85%</p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-yellow-400" />
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-dark-800/50 rounded-2xl p-6 w-full"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-white">Job Recommendations</h3>
-            <div className="flex items-center space-x-2">
-              <button className="btn-secondary flex items-center space-x-2">
-                <Filter className="w-4 h-4" />
-                <span>Edit Filters</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="flex space-x-1  mb-6">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setSelectedTab(tab.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedTab === tab.id
-                  ? 'bg-primary-500 text-white'
-                  : 'text-gray-400 hover:text-white hover:bg-dark-700'
-                  }`}
-              >
-                {tab.label} {tab.count > 0 && `(${tab.count})`}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-6">
-            {filterOptions.map((option, index) => (
-              <button
-                key={index}
-                className={`px-3 py-1 rounded-full text-sm transition-colors ${index === 0 || index === 5 || index === 9
-                  ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
-                  : 'bg-dark-700 text-gray-300 hover:bg-dark-600'
-                  }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-4">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400"></div>
-              </div>
-            ) : jobs.length > 0 ? (
-              jobs.map((job, index) => {
-                const matchScore = getMatchScore(job)
-                const matchLabel = getMatchLabel(matchScore)
-                const isGenerating = generatingResumeId === job.id
-                const isDownloading = downloadingResumeId === job.id
-
-                return (
-                  <motion.div
-                    key={job.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="glass-effect rounded-xl p-6 hover:bg-dark-700/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg flex items-center justify-center">
-                            <span className="text-white font-bold text-lg">
-                              {job.company?.charAt(0) || 'C'}
-                            </span>
-                          </div>
-                          <div>
-                            <h4 className="text-lg font-semibold text-white">{job.title}</h4>
-                            <p className="text-gray-400">{job.company}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
-                          <div className="flex items-center space-x-1">
-                            <MapPin className="w-4 h-4" />
-                            <span>{job.location}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-4 h-4" />
-                            <span>{job.job_type}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <DollarSign className="w-4 h-4" />
-                            <span>{job.salary_range}</span>
-                          </div>
-                        </div>
-
-                        <p className="text-gray-300 text-sm mb-4 line-clamp-2">
-                          {job.description}
-                        </p>
-
-                        <div className="flex items-center space-x-2">
-                          {job.tags && job.tags.slice(0, 3).map((tag, tagIndex) => (
-                            <span
-                              key={tagIndex}
-                              className="px-2 py-1 bg-dark-700 text-gray-300 rounded text-xs"
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-end space-y-3">
-                        <div className="text-right">
-                          <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mb-1">
-                            <span className="text-white font-bold text-lg">{matchScore}%</span>
-                          </div>
-                          <p className="text-xs text-green-400 font-medium">{matchLabel}</p>
-                        </div>
-
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleDownloadResume(job)}
-                            disabled={isDownloading}
-                            className="p-2 text-gray-400 hover:text-white transition-colors"
-                            title="Download Resume"
-                          >
-                            {isDownloading ? <Loader className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-                          </button>
-                          <button
-                            onClick={() => handleGenerateResume(job)}
-                            disabled={isGenerating}
-                            className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
-                          >
-                            {isGenerating ? (
-                              <>
-                                <Loader className="w-4 h-4 animate-spin" />
-                                Generating...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="w-4 h-4" />
-                                Generate Resume
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Generated Resume Display - Inline */}
-                    {generatedResumes[job.id] && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        transition={{ duration: 0.3 }}
-                        className="mt-6 border-t border-white/10 pt-6"
-                      >
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <Sparkles className="w-5 h-5 text-primary-400" />
-                            Generated Resume for {job.title}
-                          </h4>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const resumeData = generatedResumes[job.id].parsedResume
-                                  // Map to legacy format for export
-                                  const legacyData = {
-                                    personalInfo: resumeData.personalInfo || {},
-                                    summary: resumeData.sections?.find(s => s.id === 'summary')?.content || '',
-                                    skills: {
-                                      languages: resumeData.sections?.find(s => s.id === 'skills')?.items || []
-                                    },
-                                    experience: resumeData.sections?.find(s => s.id === 'experience')?.items?.map(item => ({
-                                      position: item.position || item.role,
-                                      company: item.company,
-                                      location: item.location,
-                                      duration: `${item.startDate || ''} - ${item.endDate || 'Present'}`,
-                                      achievements: item.bullets || []
-                                    })) || [],
-                                    education: resumeData.sections?.find(s => s.id === 'education')?.items?.[0] ? {
-                                      degree: resumeData.sections.find(s => s.id === 'education').items[0].degree,
-                                      university: resumeData.sections.find(s => s.id === 'education').items[0].school,
-                                      year: resumeData.sections.find(s => s.id === 'education').items[0].graduationDate
-                                    } : undefined
-                                  }
-                                  await ResumeExportService.downloadPDF(legacyData, `Resume_${job.title.replace(/\s+/g, '_')}.pdf`)
-                                } catch (error) {
-                                  console.error('PDF export failed:', error)
-                                  alert('Failed to export PDF. Please try again.')
-                                }
-                              }}
-                              className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
-                            >
-                              <DownloadIcon className="w-4 h-4" />
-                              Export PDF
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const resumeData = generatedResumes[job.id].parsedResume
-                                  const legacyData = {
-                                    personalInfo: resumeData.personalInfo || {},
-                                    summary: resumeData.sections?.find(s => s.id === 'summary')?.content || '',
-                                    skills: {
-                                      languages: resumeData.sections?.find(s => s.id === 'skills')?.items || []
-                                    },
-                                    experience: resumeData.sections?.find(s => s.id === 'experience')?.items?.map(item => ({
-                                      position: item.position || item.role,
-                                      company: item.company,
-                                      location: item.location,
-                                      duration: `${item.startDate || ''} - ${item.endDate || 'Present'}`,
-                                      achievements: item.bullets || []
-                                    })) || [],
-                                    education: resumeData.sections?.find(s => s.id === 'education')?.items?.[0] ? {
-                                      degree: resumeData.sections.find(s => s.id === 'education').items[0].degree,
-                                      university: resumeData.sections.find(s => s.id === 'education').items[0].school,
-                                      year: resumeData.sections.find(s => s.id === 'education').items[0].graduationDate
-                                    } : undefined
-                                  }
-                                  await ResumeExportService.downloadDOCX(legacyData, `Resume_${job.title.replace(/\s+/g, '_')}.docx`)
-                                } catch (error) {
-                                  console.error('DOCX export failed:', error)
-                                  alert('Failed to export DOCX. Please try again.')
-                                }
-                              }}
-                              className="btn-secondary px-4 py-2 text-sm flex items-center gap-2"
-                            >
-                              <FileText className="w-4 h-4" />
-                              Export DOCX
-                            </button>
-                            <button
-                              onClick={() => {
-                                navigator.clipboard.writeText(generatedResumes[job.id].markdown)
-                                alert('Resume copied to clipboard!')
-                              }}
-                              className="btn-secondary px-4 py-2 text-sm flex items-center gap-2"
-                            >
-                              <FileText className="w-4 h-4" />
-                              Copy Text
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Resume Preview */}
-                        <div className="bg-dark-800 rounded-lg p-6 border border-white/10">
-                          <div className="max-h-96 overflow-y-auto">
-                            {generatedResumes[job.id]?.markdown ? (
-                              <div className="text-gray-300 whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                                {generatedResumes[job.id].markdown.split('\n').map((line, idx) => {
-                                  // Basic markdown rendering
-                                  if (line.startsWith('# ')) {
-                                    return <h1 key={idx} className="text-2xl font-bold text-white mt-4 mb-2">{line.substring(2)}</h1>
-                                  } else if (line.startsWith('## ')) {
-                                    return <h2 key={idx} className="text-xl font-bold text-white mt-4 mb-2">{line.substring(3)}</h2>
-                                  } else if (line.startsWith('### ')) {
-                                    return <h3 key={idx} className="text-lg font-semibold text-white mt-3 mb-1">{line.substring(4)}</h3>
-                                  } else if (line.includes('**') && line.match(/\*\*[^*]+\*\*/)) {
-                                    // Handle bold text
-                                    const parts = line.split(/(\*\*[^*]+\*\*)/g)
-                                    return (
-                                      <p key={idx} className="my-1">
-                                        {parts.map((part, pIdx) =>
-                                          part.startsWith('**') && part.endsWith('**') ? (
-                                            <strong key={pIdx} className="text-white font-semibold">{part.replace(/\*\*/g, '')}</strong>
-                                          ) : (
-                                            <span key={pIdx}>{part}</span>
-                                          )
-                                        )}
-                                      </p>
-                                    )
-                                  } else if (line.startsWith('- ')) {
-                                    return <p key={idx} className="ml-4 my-1">• {line.substring(2)}</p>
-                                  } else if (line.trim() === '---') {
-                                    return <hr key={idx} className="my-4 border-white/20" />
-                                  } else if (line.trim() === '') {
-                                    return <br key={idx} />
-                                  } else {
-                                    return <p key={idx} className="my-1">{line}</p>
-                                  }
-                                })}
-                              </div>
-                            ) : (
-                              <p className="text-gray-400">Resume content is loading...</p>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </motion.div>
-                )
-              })
-            ) : (
-              <div className="text-center py-12">
-                <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-400">No jobs found. Try adjusting your filters.</p>
-              </div>
-            )}
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Resume Preview Modal */}
-      {showResumePreviewModal && previewResumeData && (
-        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-2 backdrop-blur-md">
-          <div className="bg-dark-800 rounded-xl w-full h-full max-w-[98vw] max-h-[98vh] flex flex-col shadow-2xl border border-white/10">
-            {/* Modal Header */}
-            <div className="p-4 border-b border-white/10 flex justify-between items-center bg-dark-900/50 rounded-t-xl">
-              <div className="flex items-center gap-4">
-                <h3 className="font-bold text-white text-xl flex items-center gap-2">
-                  <Sparkles className="w-6 h-6 text-primary-400" />
-                  Generated Resume
-                </h3>
-                {/* Tabs */}
-                <div className="flex bg-dark-900 rounded-lg p-1 border border-white/5">
-                  <button
-                    onClick={() => setSelectedTab('pdf')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${selectedTab === 'pdf'
-                      ? 'bg-primary-600 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white'
-                      }`}
-                  >
-                    PDF Preview
-                  </button>
-                  <button
-                    onClick={() => setSelectedTab('text')}
-                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${selectedTab === 'text'
-                      ? 'bg-primary-600 text-white shadow-lg'
-                      : 'text-gray-400 hover:text-white'
-                      }`}
-                  >
-                    Raw Text (Markdown)
-                  </button>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowResumePreviewModal(false)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
-              >
-                Close
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="flex-1 bg-gray-900 relative overflow-hidden flex flex-col">
-              {selectedTab === 'pdf' ? (
-                <div className="flex-1 w-full h-full flex items-center justify-center bg-gray-800/50">
-                  {previewPdfUrl ? (
-                    <iframe
-                      src={previewPdfUrl}
-                      className="w-full h-full border-none"
-                      title="Resume Preview"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-gray-400">
-                      <Loader className="w-10 h-10 animate-spin mb-4 text-primary-400" />
-                      <p className="text-lg">Rendering Professional PDF...</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex-1 w-full h-full bg-dark-900 p-6 overflow-hidden flex flex-col">
-                  <div className="flex justify-between items-center mb-4">
-                    <p className="text-gray-400 text-sm">
-                      This is the raw content generated by the AI. You can copy this to use in other applications.
-                    </p>
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(generatedResumeMarkdown)
-                        alert("Resume text copied to clipboard!")
-                      }}
-                      className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2 border border-white/10"
-                    >
-                      <FileText className="w-4 h-4" />
-                      Copy to Clipboard
-                    </button>
-                  </div>
-                  <textarea
-                    className="flex-1 w-full bg-dark-800/50 text-gray-300 font-mono text-sm resize-none focus:outline-none p-6 rounded-xl border border-white/5 leading-relaxed"
-                    value={generatedResumeMarkdown}
-                    readOnly
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="p-4 border-t border-white/10 bg-dark-900/50 flex justify-between items-center rounded-b-xl">
-              <div className="text-sm text-gray-500">
-                {selectedTab === 'pdf' ? "Review the PDF layout." : "Review the raw text content."}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setResume(previewResumeData)
-                    navigate('/resume/editor')
-                  }}
-                  className="px-5 py-2.5 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2 font-medium"
-                >
-                  <Settings className="w-4 h-4" />
-                  Open in Editor
-                </button>
-
-                <button
-                  onClick={() => {
-                    const link = document.createElement('a')
-                    link.href = previewPdfUrl
-                    link.download = `${previewResumeData.personalInfo.name.replace(/\s+/g, '_')}_Resume.pdf`
-                    document.body.appendChild(link)
-                    link.click()
-                    document.body.removeChild(link)
-                  }}
-                  className="px-6 py-2.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center gap-2 font-bold shadow-lg shadow-green-900/20"
-                >
-                  <Download className="w-5 h-5" />
-                  Download PDF
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Cover Letter Modal */}
-      {showCoverLetterModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]">
-            <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="font-bold text-slate-800">Cover Letter for {currentJobForCoverLetter?.company}</h3>
-              <button onClick={() => setShowCoverLetterModal(false)} className="text-slate-500 hover:text-slate-800">Close</button>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1">
-              {isGeneratingCoverLetter ? (
-                <div className="flex flex-col items-center justify-center h-full space-y-4">
-                  <Loader className="w-8 h-8 animate-spin text-primary-500" />
-                  <p className="text-slate-600">Generating cover letter...</p>
-                </div>
-              ) : (
-                <div className="whitespace-pre-wrap text-slate-700 text-sm font-serif leading-relaxed">
-                  {generatedCoverLetter}
-                </div>
-              )}
-            </div>
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
-              <button
-                onClick={handleDownloadCoverLetterDocx}
-                className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-2"
-                disabled={isGeneratingCoverLetter || !generatedCoverLetter}
-              >
-                <Download className="w-4 h-4" />
-                Download DOCX
-              </button>
+                }}
+              />
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(generatedCoverLetter)
-                  alert("Copied to clipboard!")
+                  console.log("Upload button clicked")
+                  fileInputRef.current?.click()
                 }}
-                className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm hover:bg-slate-50 text-slate-700"
-                disabled={isGeneratingCoverLetter}
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-3 group"
               >
-                Copy Text
-              </button>
-              <button
-                onClick={() => navigate('/resume/editor')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-              >
-                Go to Editor
+                <div className="bg-blue-500/20 p-2 rounded-lg group-hover:bg-blue-500/30 transition-colors">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                </div>
+                <span id="upload-btn-text">Upload Resume</span>
+                <span className="text-xs text-gray-400 bg-black/20 px-2 py-1 rounded">PDF / DOCX / TXT</span>
               </button>
             </div>
-          </div>
+
+            {/* Parsed Resume Preview */}
+            {showResumePreview && parsedResumePreview && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                className="mt-4 bg-green-500/10 border border-green-500/30 rounded-xl p-4 backdrop-blur-sm"
+              >
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-white font-semibold mb-2">Resume Parsed Successfully</h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-400">Name:</span>
+                        <span className="text-white ml-2 font-medium">{parsedResumePreview.name}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Email:</span>
+                        <span className="text-white ml-2 font-medium">{parsedResumePreview.email}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Skills:</span>
+                        <span className="text-green-400 ml-2 font-medium">{parsedResumePreview.skillsCount} found</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Experience:</span>
+                        <span className="text-green-400 ml-2 font-medium">{parsedResumePreview.experienceCount} positions</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowResumePreview(false)}
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    ×
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="w-full max-w-4xl mb-12"
+          >
+            <JobTailor />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 w-full"
+          >
+            <div className="glass-effect rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Jobs Applied</p>
+                  <p className="text-2xl font-bold text-white">0</p>
+                </div>
+                <Briefcase className="w-8 h-8 text-primary-400" />
+              </div>
+            </div>
+
+            <div className="glass-effect rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Profile Views</p>
+                  <p className="text-2xl font-bold text-white">0</p>
+                </div>
+                <Users className="w-8 h-8 text-green-400" />
+              </div>
+            </div>
+
+            <div className="glass-effect rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Interviews</p>
+                  <p className="text-2xl font-bold text-white">0</p>
+                </div>
+                <CheckCircle className="w-8 h-8 text-blue-400" />
+              </div>
+            </div>
+
+            <div className="glass-effect rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-400 text-sm">Match Score</p>
+                  <p className="text-2xl font-bold text-white">85%</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-yellow-400" />
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-dark-800/50 rounded-2xl p-6 w-full"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white">Job Recommendations</h3>
+              <div className="flex items-center space-x-2">
+                <button className="btn-secondary flex items-center space-x-2">
+                  <Filter className="w-4 h-4" />
+                  <span>Edit Filters</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex space-x-1  mb-6">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedTab(tab.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedTab === tab.id
+                    ? 'bg-primary-500 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-dark-700'
+                    }`}
+                >
+                  {tab.label} {tab.count > 0 && `(${tab.count})`}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-2 mb-6">
+              {filterOptions.map((option, index) => (
+                <button
+                  key={index}
+                  className={`px-3 py-1 rounded-full text-sm transition-colors ${index === 0 || index === 5 || index === 9
+                    ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
+                    : 'bg-dark-700 text-gray-300 hover:bg-dark-600'
+                    }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-4">
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-400"></div>
+                </div>
+              ) : jobs.length > 0 ? (
+                jobs.map((job, index) => {
+                  const matchScore = getMatchScore(job)
+                  const matchLabel = getMatchLabel(matchScore)
+                  const isGenerating = generatingResumeId === job.id
+                  const isDownloading = downloadingResumeId === job.id
+
+                  return (
+                    <motion.div
+                      key={job.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="glass-effect rounded-xl p-6 hover:bg-dark-700/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3 mb-2">
+                            <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg flex items-center justify-center">
+                              <span className="text-white font-bold text-lg">
+                                {job.company?.charAt(0) || 'C'}
+                              </span>
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-semibold text-white">{job.title}</h4>
+                              <p className="text-gray-400">{job.company}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center space-x-4 text-sm text-gray-400 mb-3">
+                            <div className="flex items-center space-x-1">
+                              <MapPin className="w-4 h-4" />
+                              <span>{job.location}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Clock className="w-4 h-4" />
+                              <span>{job.job_type}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <DollarSign className="w-4 h-4" />
+                              <span>{job.salary_range}</span>
+                            </div>
+                          </div>
+
+                          <p className="text-gray-300 text-sm mb-4 line-clamp-2">
+                            {job.description}
+                          </p>
+
+                          <div className="flex items-center space-x-2">
+                            {job.tags && job.tags.slice(0, 3).map((tag, tagIndex) => (
+                              <span
+                                key={tagIndex}
+                                className="px-2 py-1 bg-dark-700 text-gray-300 rounded text-xs"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col items-end space-y-3">
+                          <div className="text-right">
+                            <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center mb-1">
+                              <span className="text-white font-bold text-lg">{matchScore}%</span>
+                            </div>
+                            <p className="text-xs text-green-400 font-medium">{matchLabel}</p>
+                          </div>
+
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleDownloadResume(job)}
+                              disabled={isDownloading}
+                              className="p-2 text-gray-400 hover:text-white transition-colors"
+                              title="Download Resume"
+                            >
+                              {isDownloading ? <Loader className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                            </button>
+                            <button
+                              onClick={() => handleGenerateResume(job)}
+                              disabled={isGenerating}
+                              className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
+                            >
+                              {isGenerating ? (
+                                <>
+                                  <Loader className="w-4 h-4 animate-spin" />
+                                  Generating...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-4 h-4" />
+                                  Generate Resume
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Generated Resume Display - Inline */}
+                      {generatedResumes[job.id] && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          transition={{ duration: 0.3 }}
+                          className="mt-6 border-t border-white/10 pt-6"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-white flex items-center gap-2">
+                              <Sparkles className="w-5 h-5 text-primary-400" />
+                              Generated Resume for {job.title}
+                            </h4>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const resumeData = generatedResumes[job.id].parsedResume
+                                    // Map to legacy format for export
+                                    const legacyData = {
+                                      personalInfo: resumeData.personalInfo || {},
+                                      summary: resumeData.sections?.find(s => s.id === 'summary')?.content || '',
+                                      skills: {
+                                        languages: resumeData.sections?.find(s => s.id === 'skills')?.items || []
+                                      },
+                                      experience: resumeData.sections?.find(s => s.id === 'experience')?.items?.map(item => ({
+                                        position: item.position || item.role,
+                                        company: item.company,
+                                        location: item.location,
+                                        duration: `${item.startDate || ''} - ${item.endDate || 'Present'}`,
+                                        achievements: item.bullets || []
+                                      })) || [],
+                                      education: resumeData.sections?.find(s => s.id === 'education')?.items?.[0] ? {
+                                        degree: resumeData.sections.find(s => s.id === 'education').items[0].degree,
+                                        university: resumeData.sections.find(s => s.id === 'education').items[0].school,
+                                        year: resumeData.sections.find(s => s.id === 'education').items[0].graduationDate
+                                      } : undefined
+                                    }
+                                    await ResumeExportService.downloadPDF(legacyData, `Resume_${job.title.replace(/\s+/g, '_')}.pdf`)
+                                  } catch (error) {
+                                    console.error('PDF export failed:', error)
+                                    alert('Failed to export PDF. Please try again.')
+                                  }
+                                }}
+                                className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
+                              >
+                                <DownloadIcon className="w-4 h-4" />
+                                Export PDF
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const resumeData = generatedResumes[job.id].parsedResume
+                                    const legacyData = {
+                                      personalInfo: resumeData.personalInfo || {},
+                                      summary: resumeData.sections?.find(s => s.id === 'summary')?.content || '',
+                                      skills: {
+                                        languages: resumeData.sections?.find(s => s.id === 'skills')?.items || []
+                                      },
+                                      experience: resumeData.sections?.find(s => s.id === 'experience')?.items?.map(item => ({
+                                        position: item.position || item.role,
+                                        company: item.company,
+                                        location: item.location,
+                                        duration: `${item.startDate || ''} - ${item.endDate || 'Present'}`,
+                                        achievements: item.bullets || []
+                                      })) || [],
+                                      education: resumeData.sections?.find(s => s.id === 'education')?.items?.[0] ? {
+                                        degree: resumeData.sections.find(s => s.id === 'education').items[0].degree,
+                                        university: resumeData.sections.find(s => s.id === 'education').items[0].school,
+                                        year: resumeData.sections.find(s => s.id === 'education').items[0].graduationDate
+                                      } : undefined
+                                    }
+                                    await ResumeExportService.downloadDOCX(legacyData, `Resume_${job.title.replace(/\s+/g, '_')}.docx`)
+                                  } catch (error) {
+                                    console.error('DOCX export failed:', error)
+                                    alert('Failed to export DOCX. Please try again.')
+                                  }
+                                }}
+                                className="btn-secondary px-4 py-2 text-sm flex items-center gap-2"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Export DOCX
+                              </button>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(generatedResumes[job.id].markdown)
+                                  alert('Resume copied to clipboard!')
+                                }}
+                                className="btn-secondary px-4 py-2 text-sm flex items-center gap-2"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Copy Text
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Resume Preview */}
+                          <div className="bg-dark-800 rounded-lg p-6 border border-white/10">
+                            <div className="max-h-96 overflow-y-auto">
+                              {generatedResumes[job.id]?.markdown ? (
+                                <div className="text-gray-300 whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                                  {generatedResumes[job.id].markdown.split('\n').map((line, idx) => {
+                                    // Basic markdown rendering
+                                    if (line.startsWith('# ')) {
+                                      return <h1 key={idx} className="text-2xl font-bold text-white mt-4 mb-2">{line.substring(2)}</h1>
+                                    } else if (line.startsWith('## ')) {
+                                      return <h2 key={idx} className="text-xl font-bold text-white mt-4 mb-2">{line.substring(3)}</h2>
+                                    } else if (line.startsWith('### ')) {
+                                      return <h3 key={idx} className="text-lg font-semibold text-white mt-3 mb-1">{line.substring(4)}</h3>
+                                    } else if (line.includes('**') && line.match(/\*\*[^*]+\*\*/)) {
+                                      // Handle bold text
+                                      const parts = line.split(/(\*\*[^*]+\*\*)/g)
+                                      return (
+                                        <p key={idx} className="my-1">
+                                          {parts.map((part, pIdx) =>
+                                            part.startsWith('**') && part.endsWith('**') ? (
+                                              <strong key={pIdx} className="text-white font-semibold">{part.replace(/\*\*/g, '')}</strong>
+                                            ) : (
+                                              <span key={pIdx}>{part}</span>
+                                            )
+                                          )}
+                                        </p>
+                                      )
+                                    } else if (line.startsWith('- ')) {
+                                      return <p key={idx} className="ml-4 my-1">• {line.substring(2)}</p>
+                                    } else if (line.trim() === '---') {
+                                      return <hr key={idx} className="my-4 border-white/20" />
+                                    } else if (line.trim() === '') {
+                                      return <br key={idx} />
+                                    } else {
+                                      return <p key={idx} className="my-1">{line}</p>
+                                    }
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-gray-400">Resume content is loading...</p>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </motion.div>
+                  )
+                })
+              ) : (
+                <div className="text-center py-12">
+                  <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-400">No jobs found. Try adjusting your filters.</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
         </div>
-      )}
-    </div>
+
+        {/* Resume Preview Modal */}
+        {showResumePreviewModal && previewResumeData && (
+          <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-2 backdrop-blur-md">
+            <div className="bg-dark-800 rounded-xl w-full h-full max-w-[98vw] max-h-[98vh] flex flex-col shadow-2xl border border-white/10">
+              {/* Modal Header */}
+              <div className="p-4 border-b border-white/10 flex justify-between items-center bg-dark-900/50 rounded-t-xl">
+                <div className="flex items-center gap-4">
+                  <h3 className="font-bold text-white text-xl flex items-center gap-2">
+                    <Sparkles className="w-6 h-6 text-primary-400" />
+                    Generated Resume
+                  </h3>
+                  {/* Tabs */}
+                  <div className="flex bg-dark-900 rounded-lg p-1 border border-white/5">
+                    <button
+                      onClick={() => setSelectedTab('pdf')}
+                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${selectedTab === 'pdf'
+                        ? 'bg-primary-600 text-white shadow-lg'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                      PDF Preview
+                    </button>
+                    <button
+                      onClick={() => setSelectedTab('text')}
+                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${selectedTab === 'text'
+                        ? 'bg-primary-600 text-white shadow-lg'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
+                    >
+                      Raw Text (Markdown)
+                    </button>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowResumePreviewModal(false)}
+                  className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
+                >
+                  Close
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="flex-1 bg-gray-900 relative overflow-hidden flex flex-col">
+                {selectedTab === 'pdf' ? (
+                  <div className="flex-1 w-full h-full flex items-center justify-center bg-gray-800/50">
+                    {previewPdfUrl ? (
+                      <iframe
+                        src={previewPdfUrl}
+                        className="w-full h-full border-none"
+                        title="Resume Preview"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-400">
+                        <Loader className="w-10 h-10 animate-spin mb-4 text-primary-400" />
+                        <p className="text-lg">Rendering Professional PDF...</p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex-1 w-full h-full bg-dark-900 p-6 overflow-hidden flex flex-col">
+                    <div className="flex justify-between items-center mb-4">
+                      <p className="text-gray-400 text-sm">
+                        This is the raw content generated by the AI. You can copy this to use in other applications.
+                      </p>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(generatedResumeMarkdown)
+                          alert("Resume text copied to clipboard!")
+                        }}
+                        className="px-4 py-2 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2 border border-white/10"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Copy to Clipboard
+                      </button>
+                    </div>
+                    <textarea
+                      className="flex-1 w-full bg-dark-800/50 text-gray-300 font-mono text-sm resize-none focus:outline-none p-6 rounded-xl border border-white/5 leading-relaxed"
+                      value={generatedResumeMarkdown}
+                      readOnly
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-white/10 bg-dark-900/50 flex justify-between items-center rounded-b-xl">
+                <div className="text-sm text-gray-500">
+                  {selectedTab === 'pdf' ? "Review the PDF layout." : "Review the raw text content."}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setResume(previewResumeData)
+                      navigate('/resume/editor')
+                    }}
+                    className="px-5 py-2.5 bg-dark-700 text-white rounded-lg text-sm hover:bg-dark-600 transition-colors flex items-center gap-2 font-medium"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Open in Editor
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const link = document.createElement('a')
+                      link.href = previewPdfUrl
+                      link.download = `${previewResumeData.personalInfo.name.replace(/\s+/g, '_')}_Resume.pdf`
+                      document.body.appendChild(link)
+                      link.click()
+                      document.body.removeChild(link)
+                    }}
+                    className="px-6 py-2.5 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors flex items-center gap-2 font-bold shadow-lg shadow-green-900/20"
+                  >
+                    <Download className="w-5 h-5" />
+                    Download PDF
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cover Letter Modal */}
+        {showCoverLetterModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[80vh]">
+              <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+                <h3 className="font-bold text-slate-800">Cover Letter for {currentJobForCoverLetter?.company}</h3>
+                <button onClick={() => setShowCoverLetterModal(false)} className="text-slate-500 hover:text-slate-800">Close</button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1">
+                {isGeneratingCoverLetter ? (
+                  <div className="flex flex-col items-center justify-center h-full space-y-4">
+                    <Loader className="w-8 h-8 animate-spin text-primary-500" />
+                    <p className="text-slate-600">Generating cover letter...</p>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap text-slate-700 text-sm font-serif leading-relaxed">
+                    {generatedCoverLetter}
+                  </div>
+                )}
+              </div>
+              <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-end gap-3">
+                <button
+                  onClick={handleDownloadCoverLetterDocx}
+                  className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm hover:bg-slate-50 text-slate-700 flex items-center gap-2"
+                  disabled={isGeneratingCoverLetter || !generatedCoverLetter}
+                >
+                  <Download className="w-4 h-4" />
+                  Download DOCX
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedCoverLetter)
+                    alert("Copied to clipboard!")
+                  }}
+                  className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm hover:bg-slate-50 text-slate-700"
+                  disabled={isGeneratingCoverLetter}
+                >
+                  Copy Text
+                </button>
+                <button
+                  onClick={() => navigate('/resume/editor')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
+                >
+                  Go to Editor
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   )
 }
 

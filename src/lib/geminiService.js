@@ -451,7 +451,8 @@ REMEMBER: Output ONLY the resume content starting with "# ${name}". No other tex
         resume: userResume,
         jobDescription: jobDescription,
         jobTitle: jobTitleMatch ? jobTitleMatch[1].trim() : 'Position',
-        companyName: companyMatch ? companyMatch[1].trim() : 'Company'
+        companyName: companyMatch ? companyMatch[1].trim() : 'Company',
+        mode: 'markdown'
       });
 
       // Handle different response types

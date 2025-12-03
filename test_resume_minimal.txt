@@ -1,0 +1,19 @@
+Bob Johnson
+bob.j@mail.com
+(415) 555-9876
+
+Software Developer
+
+SKILLS
+Python, JavaScript, React, SQL, Git
+
+EXPERIENCE
+
+Software Developer - WebDev Co - 2022 to Present
+Built web applications
+
+Junior Developer - StartCo - 2020-2022
+Worked on frontend
+
+EDUCATION
+BS Computer Science, State University, 2020

@@ -1,0 +1,93 @@
+========================================
+ALEXANDRA RODRIGUEZ
+Senior Full-Stack Engineer & Tech Lead
+========================================
+
+Contact: alex.rodriguez@techmail.com | M: +1 (408) 555-TECH
+Location: Austin, TX 78701 | LinkedIn: /in/alexrodriguez | GitHub: @alexrodriguez
+
+────────────────────────────────────────
+PROFESSIONAL SUMMARY
+────────────────────────────────────────
+Innovative and results-driven Senior Software Engineer with 8+ years of progressive experience in enterprise software development, cloud architecture, and technical leadership. Specializes in building highly scalable distributed systems, implementing DevOps best practices, and mentoring high-performing engineering teams. Passionate about leveraging cutting-edge technologies to solve complex business challenges and drive organizational growth.
+
+────────────────────────────────────────
+TECHNICAL PROFICIENCIES
+────────────────────────────────────────
+Languages & Frameworks:
+  • Primary: JavaScript (ES6+), TypeScript, Python 3.x, Java, Go
+  • Web: React.js, Next.js, Vue.js, Angular, Node.js, Express.js, FastAPI
+  • Mobile: React Native, Flutter
+  
+Cloud & Infrastructure:
+  • AWS: EC2, ECS, Lambda, S3, DynamoDB, RDS, CloudFormation, AWS CDK
+  • GCP: Compute Engine, Cloud Functions, Cloud SQL, GKE
+  • Azure: App Service, Functions, Cosmos DB
+  
+DevOps & Tools:
+  • Container Orchestration: Docker, Kubernetes, Helm, Docker Compose
+  • CI/CD: Jenkins, GitLab CI, GitHub Actions, CircleCI, ArgoCD
+  • IaC: Terraform, Ansible, Pulumi
+  • Monitoring: Datadog, Prometheus, Grafana, ELK Stack, New Relic
+  
+Data & Databases:
+  • SQL: PostgreSQL, MySQL, Oracle, SQL Server
+  • NoSQL: MongoDB, Cassandra, Redis, Elasticsearch
+  • Stream Processing: Apache Kafka, RabbitMQ, AWS Kinesis
+
+────────────────────────────────────────
+PROFESSIONAL EXPERIENCE
+────────────────────────────────────────
+
+PRINCIPAL SOFTWARE ENGINEER & TECH LEAD
+Enterprise Solutions Group | Austin, TX | March 2021 – Present
+
+• Spearhead architecture and development of cloud-native SaaS platform serving Fortune 500 clients, processing 100M+ transactions monthly with 99.99% uptime SLA
+• Led technical design and implementation of event-driven microservices architecture using Node.js, Python, and AWS, reducing system latency by 65% and improving throughput to 50K TPS
+• Architected and deployed auto-scaling infrastructure on AWS ECS with Terraform, reducing operational costs by $2.3M annually while improving resource utilization from 42% to 87%
+• Championed adoption of GitOps and CI/CD best practices, reducing deployment time from 4 hours to 12 minutes and increasing release frequency from monthly to multiple times daily
+• Built and mentored cross-functional engineering team of 15 developers, establishing code quality standards, conducting architecture reviews, and fostering culture of continuous improvement
+• Implemented comprehensive observability stack with Datadog and ELK, achieving 95% reduction in mean time to detection (MTTD) for production issues
+• Drove migration from monolithic legacy system to microservices, completing 18-month project ahead of schedule and under budget with zero downtime
+
+SENIOR SOFTWARE ENGINEER
+TechInnovate Corp | Remote | June 2019 – February 2021
+
+• Developed high-performance real-time analytics platform using React, Python, and PostgreSQL, enabling data-driven insights for 500K+ users
+• Optimized database queries and implemented distributed caching with Redis, improving page load times by 78% and reducing database load by 60%
+• Built RESTful and GraphQL APIs consumed by mobile and web applications, handling 2M+ API calls daily
+• Implemented automated testing framework achieving 90%+ code coverage, reducing production bugs by 55%
+• Collaborated with product and UX teams to deliver feature-rich customer dashboard with real-time data visualization using D3.js and WebSockets
+• Led proof-of-concept for serverless architecture, resulting in 40% cost savings on compute resources
+
+SOFTWARE ENGINEER II
+DataStream Technologies | San Jose, CA | January 2017 – May 2019
+
+• Engineered data ingestion pipelines processing 5TB+ daily using Apache Kafka, Spark, and Python
+• Developed internal developer tools and CLI applications improving team productivity by 30%
+• Contributed to open-source projects and internal libraries used across engineering organization
+• Participated in on-call rotation, maintaining 99.9% service availability
+
+────────────────────────────────────────
+EDUCATION & CERTIFICATIONS
+────────────────────────────────────────
+
+Master of Science in Computer Science (AI Specialization)
+Georgia Institute of Technology | GPA: 3.9/4.0 | 2020
+
+Bachelor of Science in Software Engineering (Summa Cum Laude)
+University of Texas at Austin | GPA: 3.85/4.0 | 2016
+
+Certifications:
+• AWS Certified Solutions Architect – Professional (2023)
+• AWS Certified Developer – Associate (2022)
+• Certified Kubernetes Administrator (CKA) - CNCF (2022)
+• Google Cloud Professional Cloud Architect (2021)
+• Certified Scrum Master (CSM) - Scrum Alliance (2020)
+
+────────────────────────────────────────
+PUBLICATIONS & SPEAKING
+────────────────────────────────────────
+• "Scaling Microservices: Lessons from Production" - AWS re:Invent 2022
+• "Event-Driven Architecture Patterns" - Tech Blog (250K+ views)
+• Conference Speaker at KubeCon, DevOps Days, React Conf
