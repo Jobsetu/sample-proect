@@ -118,7 +118,9 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                             return section.content ? (
                                 <View key={section.id} style={styles.section}>
                                     <Text style={styles.sectionTitle}>{section.title}</Text>
-                                    <Text style={{ lineHeight: 1.3 }}>{section.content}</Text>
+                                    <Text style={{ lineHeight: 1.3 }}>
+                                        {typeof section.content === 'object' ? (section.content.content || '') : section.content}
+                                    </Text>
                                 </View>
                             ) : null
                         }
@@ -262,7 +264,9 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                         {getSection('summary').content && (
                             <View style={{ marginBottom: 15 }}>
                                 <Text style={styles.sectionTitle}>Profile</Text>
-                                <Text style={{ fontSize: 10, lineHeight: 1.4 }}>{getSection('summary').content}</Text>
+                                <Text style={{ fontSize: 10, lineHeight: 1.4 }}>
+                                    {typeof getSection('summary').content === 'object' ? (getSection('summary').content.content || '') : getSection('summary').content}
+                                </Text>
                             </View>
                         )}
 
@@ -300,7 +304,11 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                         <View key={section.id} wrap={false}>
                             {section.id !== 'personal' && <Text style={styles.sectionTitle}>{section.title?.toUpperCase()}</Text>}
 
-                            {section.id === 'summary' && <Text style={{ marginBottom: 5 }}>{section.content}</Text>}
+                            {section.id === 'summary' && (
+                                <Text style={{ marginBottom: 5 }}>
+                                    {typeof section.content === 'object' ? (section.content.content || '') : section.content}
+                                </Text>
+                            )}
 
                             {section.id === 'skills' && (
                                 <Text>{Array.isArray(section.items) ? section.items.join(' • ') : ''}</Text>
@@ -346,7 +354,9 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                         return (
                             <View key={section.id} style={styles.section}>
                                 <Text style={styles.sectionTitle}>{section.title}</Text>
-                                <Text style={{ lineHeight: 1.4 }}>{section.content}</Text>
+                                <Text style={{ lineHeight: 1.4 }}>
+                                    {typeof section.content === 'object' ? (section.content.content || '') : section.content}
+                                </Text>
                             </View>
                         )
                     }

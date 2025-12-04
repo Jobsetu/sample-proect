@@ -60,7 +60,7 @@ export class ResumeExportService {
         } else {
           doc.setFont('helvetica', 'normal')
         }
-        
+
         const lines = doc.splitTextToSize(text, maxWidth)
         doc.text(lines, x, y)
         return y + (lines.length * fontSize * lineHeight)
@@ -81,7 +81,7 @@ export class ResumeExportService {
         resumeData.personalInfo.linkedin,
         resumeData.personalInfo.github
       ].filter(Boolean).join(' • ')
-      
+
       doc.text(contactInfo, pageWidth / 2, yPosition, { align: 'center' })
       yPosition += 15
 
@@ -111,12 +111,13 @@ export class ResumeExportService {
 
         doc.setFontSize(fontSize)
         doc.setFont('helvetica', 'normal')
-        
+
         if (resumeData.skills.languages) {
           doc.setFont('helvetica', 'bold')
           doc.text('Languages & Databases: ', margin * 20, yPosition)
           doc.setFont('helvetica', 'normal')
-          doc.text(resumeData.skills.languages.join(', '), margin * 20 + 60, yPosition)
+          const skillStrings = resumeData.skills.languages.map(s => typeof s === 'string' ? s : (s.name || s.skill || ''))
+          doc.text(skillStrings.join(', '), margin * 20 + 60, yPosition)
           yPosition += 6
         }
 
@@ -124,7 +125,8 @@ export class ResumeExportService {
           doc.setFont('helvetica', 'bold')
           doc.text('Frameworks and Libraries: ', margin * 20, yPosition)
           doc.setFont('helvetica', 'normal')
-          doc.text(resumeData.skills.frameworks.join(', '), margin * 20 + 60, yPosition)
+          const skillStrings = resumeData.skills.frameworks.map(s => typeof s === 'string' ? s : (s.name || s.skill || ''))
+          doc.text(skillStrings.join(', '), margin * 20 + 60, yPosition)
           yPosition += 6
         }
 
@@ -132,7 +134,8 @@ export class ResumeExportService {
           doc.setFont('helvetica', 'bold')
           doc.text('Developer Tools: ', margin * 20, yPosition)
           doc.setFont('helvetica', 'normal')
-          doc.text(resumeData.skills.tools.join(', '), margin * 20 + 60, yPosition)
+          const skillStrings = resumeData.skills.tools.map(s => typeof s === 'string' ? s : (s.name || s.skill || ''))
+          doc.text(skillStrings.join(', '), margin * 20 + 60, yPosition)
           yPosition += 6
         }
         yPosition += 5
@@ -312,7 +315,7 @@ export class ResumeExportService {
                       size: 22
                     }),
                     new TextRun({
-                      text: resumeData.skills.languages.join(', '),
+                      text: resumeData.skills.languages.map(s => typeof s === 'string' ? s : (s.name || s.skill || '')).join(', '),
                       size: 22
                     })
                   ],
@@ -328,7 +331,7 @@ export class ResumeExportService {
                       size: 22
                     }),
                     new TextRun({
-                      text: resumeData.skills.frameworks.join(', '),
+                      text: resumeData.skills.frameworks.map(s => typeof s === 'string' ? s : (s.name || s.skill || '')).join(', '),
                       size: 22
                     })
                   ],
@@ -344,7 +347,7 @@ export class ResumeExportService {
                       size: 22
                     }),
                     new TextRun({
-                      text: resumeData.skills.tools.join(', '),
+                      text: resumeData.skills.tools.map(s => typeof s === 'string' ? s : (s.name || s.skill || '')).join(', '),
                       size: 22
                     })
                   ],
@@ -385,7 +388,7 @@ export class ResumeExportService {
                   ],
                   spacing: { after: 100 }
                 }),
-                ...(exp.achievements ? exp.achievements.map(achievement => 
+                ...(exp.achievements ? exp.achievements.map(achievement =>
                   new Paragraph({
                     children: [
                       new TextRun({
@@ -509,8 +512,8 @@ export class ResumeExportService {
       }
       const doc = await this.generateDOCX(resumeData, style)
       const buffer = await Packer.toBuffer(doc)
-      const blob = new Blob([buffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       })
       saveAs(blob, filename)
     } catch (error) {

@@ -334,6 +334,9 @@ ${educationSection?.items?.[0]?.school || 'University of Technology'} | ${educat
       // CRITICAL: Update global store so Resume Builder sees it
       setResume(parsedResume)
 
+      // Show success notification with link to Resume Builder
+      addToast('success', `✓ Resume generated for ${job.title}! Click "Open in Resume Builder" below to edit and export.`, 8000)
+
       // 6. Generate PDF URL for preview (optional, done in background)
       // Don't block on this - resume is already shown
       pdf(<ResumeDocument resume={parsedResume} template="stitch" />)
@@ -374,7 +377,7 @@ ${educationSection?.items?.[0]?.school || 'University of Technology'} | ${educat
         console.log('Fallback resume generated and displayed')
       } catch (fallbackError) {
         console.error('Even fallback failed:', fallbackError)
-        alert(`Failed to generate resume: ${error.message || 'Please try again.'}`)
+        addToast('error', `Failed to generate resume: ${error.message || 'Please try again.'}`)
       }
     } finally {
       setGeneratingResumeId(null)
@@ -907,6 +910,13 @@ ${educationSection?.items?.[0]?.school || 'University of Technology'} | ${educat
                               Generated Resume for {job.title}
                             </h4>
                             <div className="flex gap-2">
+                              <button
+                                onClick={() => navigate('/resume?tab=builder')}
+                                className="btn-primary px-4 py-2 text-sm flex items-center gap-2"
+                              >
+                                <FileText className="w-4 h-4" />
+                                Open in Resume Builder
+                              </button>
                               <button
                                 onClick={async () => {
                                   try {

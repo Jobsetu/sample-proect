@@ -326,6 +326,7 @@ def generate_resume():
             print(f"[RESUME] Extracted text preview: {text_output[:500]}")
             
             # Clean up the output - remove any markdown code blocks if present
+            # Clean up the output - remove any markdown code blocks if present
             if text_output:
                 text_output = text_output.strip()
                 # Remove markdown code blocks if the AI wrapped it
@@ -339,67 +340,92 @@ def generate_resume():
                         lines = lines[:-1]
                     text_output = '\n'.join(lines).strip()
             
-            # Sanitize generated JSON
+            # Sanitize generated JSON ONLY if not in markdown mode
             is_valid_json = False
-            try:
-                # Robust JSON extraction
-                json_start = text_output.find('{')
-                json_end = text_output.rfind('}')
-                
-                if json_start != -1 and json_end != -1:
-                    potential_json = text_output[json_start:json_end+1]
-                    gen_json = json.loads(potential_json)
+            if generation_mode != 'markdown':
+                try:
+                    # Robust JSON extraction
+                    json_start = text_output.find('{')
+                    json_end = text_output.rfind('}')
                     
-                    # Use the extracted JSON as the text output
-                    # But first sanitize
-                    def sanitize_skills_list(items):
-                        clean_items = []
-                        if isinstance(items, list):
-                            for item in items:
-                                if isinstance(item, str):
-                                    clean_items.append(item)
-                                elif isinstance(item, dict):
-                                    for key, val in item.items():
-                                        if isinstance(val, str):
-                                            clean_items.append(val)
-                                        elif isinstance(val, list):
-                                            clean_items.extend(sanitize_skills_list(val))
-                                        elif isinstance(val, dict):
-                                            clean_items.extend(sanitize_skills_list([val]))
-                                elif isinstance(item, list):
-                                    clean_items.extend(sanitize_skills_list(item))
-                                else:
-                                    if item is not None:
-                                        clean_items.append(str(item))
-                        return clean_items
+                    if json_start != -1 and json_end != -1:
+                        potential_json = text_output[json_start:json_end+1]
+                        gen_json = json.loads(potential_json)
+                        
+                        # Use the extracted JSON as the text output
+                        # But first sanitize
+                        def sanitize_skills_list(items):
+                            clean_items = []
+                            if isinstance(items, list):
+                                for item in items:
+                                    if isinstance(item, str):
+                                        clean_items.append(item)
+                                    elif isinstance(item, dict):
+                                        for key, val in item.items():
+                                            if isinstance(val, str):
+                                                clean_items.append(val)
+                                            elif isinstance(val, list):
+                                                clean_items.extend(sanitize_skills_list(val))
+                                            elif isinstance(val, dict):
+                                                clean_items.extend(sanitize_skills_list([val]))
+                                    elif isinstance(item, list):
+                                        clean_items.extend(sanitize_skills_list(item))
+                                    else:
+                                        if item is not None:
+                                            clean_items.append(str(item))
+                            return clean_items
 
-                    if 'sections' in gen_json:
-                        for section in gen_json['sections']:
-                            if section.get('id') == 'skills' and 'items' in section:
-                                original_items = section['items']
-                                cleaned = sanitize_skills_list(original_items)
-                                print(f"[SANITIZER-GEN] Skills cleaned. Original count: {len(original_items)}, New count: {len(cleaned)}")
-                                section['items'] = cleaned
-                    
-                    text_output = json.dumps(gen_json)
-                    is_valid_json = True
-                    print("[RESUME] JSON validation successful (robust extraction)")
-                else:
-                    print("[RESUME] No JSON object found in output")
-            except Exception as e:
-                print(f"[RESUME] JSON sanitization/validation failed: {e}")
+                        if 'sections' in gen_json:
+                            for section in gen_json['sections']:
+                                if section.get('id') == 'skills' and 'items' in section:
+                                    original_items = section['items']
+                                    cleaned = sanitize_skills_list(original_items)
+                                    print(f"[SANITIZER-GEN] Skills cleaned. Original count: {len(original_items)}, New count: {len(cleaned)}")
+                                    section['items'] = cleaned
+                        
+                        text_output = json.dumps(gen_json)
+                        is_valid_json = True
+                        print("[RESUME] JSON validation successful (robust extraction)")
+                    else:
+                        print("[RESUME] No JSON object found in output")
+                except Exception as e:
+                    print(f"[RESUME] JSON sanitization/validation failed: {e}")
 
             # Validate that it looks like a resume (starts with # or contains resume sections)
             # Also check if it's a guide/template (contains words like "template", "example", "here is")
+            text_lower = text_output.lower()
+            
+            # Less strict guide detection for markdown mode
+            forbidden_phrases = ['template', 'example resume', 'here is a', 'tips for', 'how to', 'guide to', 'sample resume']
+            is_guide = False
+            
+            # Only check for guide phrases if it doesn't look like a valid markdown resume
+            if not text_output.strip().startswith('#'):
+                 is_guide = any(word in text_lower[:200] for word in forbidden_phrases)
+            
+            # If markdown mode, be more lenient - just look for headers
+            if generation_mode == 'markdown':
+                has_headers = (
+                    text_output.strip().startswith('#') or 
+                    '## PROFESSIONAL SUMMARY' in text_output or
+                    '## EXPERIENCE' in text_output or 
+                    '## PROFESSIONAL EXPERIENCE' in text_output or
+                    '## EDUCATION' in text_output
+                )
+                is_valid_resume = len(text_output) > 100 and has_headers
                 
-                # Validate that it looks like a resume (starts with # or contains resume sections)
-                # Also check if it's a guide/template (contains words like "template", "example", "here is")
-                text_lower = text_output.lower()
-                is_guide = any(word in text_lower[:500] for word in ['template', 'example resume', 'here is a', 'tips for', 'how to', 'guide to', 'sample resume'])
-                
+                # If it has headers but starts with preamble, try to strip preamble
+                if has_headers and not text_output.strip().startswith('#'):
+                    # Find first H1
+                    h1_index = text_output.find('# ')
+                    if h1_index != -1:
+                        print(f"[RESUME] Stripping preamble from markdown (length {h1_index})")
+                        text_output = text_output[h1_index:]
+                        is_valid_resume = True
+            else:
                 is_valid_resume = (
                     text_output and 
-                    len(text_output) > 50 and  # Lowered threshold for JSON updates
+                    len(text_output) > 50 and 
                     not is_guide and
                     (is_valid_json or 
                      text_output.strip().startswith('#') or 
@@ -407,14 +433,14 @@ def generate_resume():
                      'EXPERIENCE' in text_output.upper() or
                      'EDUCATION' in text_output.upper())
                 )
-                
-                print(f"[RESUME] Validation: is_valid_json={is_valid_json}, is_guide={is_guide}, len={len(text_output)}")
-                
-                if is_valid_resume:
-                    print(f"[RESUME] AI generation successful, output length: {len(text_output)}")
-                    return jsonify({"output": text_output, "source": "ai"})
-                else:
-                    print(f"[RESUME] AI output doesn't look like a resume (is_guide={is_guide}), using fallback. Output preview: {text_output[:300]}")
+            
+            print(f"[RESUME] Validation: is_valid_json={is_valid_json}, is_guide={is_guide}, len={len(text_output)}, mode={generation_mode}")
+            
+            if is_valid_resume:
+                print(f"[RESUME] AI generation successful, output length: {len(text_output)}")
+                return jsonify({"output": text_output, "source": "ai"})
+            else:
+                print(f"[RESUME] AI output doesn't look like a resume (is_guide={is_guide}), using fallback. Output preview: {text_output[:300]}")
         
         except Exception as ai_error:
             print(f"[RESUME] AI generation failed: {ai_error}")

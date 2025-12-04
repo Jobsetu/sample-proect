@@ -421,94 +421,162 @@ export class GeminiService {
     const skillsSection = sections.find(s => s.id === 'skills')
     const summarySection = sections.find(s => s.id === 'summary')
 
-    const prompt = `You are a professional resume writer.Create a complete, tailored resume in Markdown format.
+    const prompt = `You are an expert resume writer and ATS optimization specialist. Your mission is to transform the candidate's background into a highly targeted resume that positions them as the PERFECT match for this specific job.
+
+=== PHASE 1: ANALYZE THE JOB ===
 
 JOB DESCRIPTION:
 ${jobDescription}
 
-CANDIDATE DETAILS:
-    Name: ${name}
-    Email: ${email}
-    Phone: ${phone || 'Not provided'}
-    Location: ${location || 'Not provided'}
-    LinkedIn: ${linkedin || 'Not provided'}
-    GitHub: ${github || 'Not provided'}
+First, carefully analyze this job description and identify:
+1. Top 10 MUST-HAVE technical skills, tools, and technologies
+2. Top 5 key responsibilities and required competencies
+3. Required experience level (entry/mid/senior) and years
+4. Industry-specific keywords, buzzwords, and terminology
+5. Soft skills mentioned or implied (leadership, communication, etc.)
 
-${summarySection ? `Summary: ${summarySection.content}` : ''}
+=== PHASE 2: CANDIDATE'S BACKGROUND ===
 
-${skillsSection ? `Skills: ${JSON.stringify(skillsSection.items || [])}` : ''}
+Personal Information:
+- Name: ${name}
+- Email: ${email}
+- Phone: ${phone || '(555) 123-4567'}
+- Location: ${location || 'City, State'}
+- LinkedIn: ${linkedin || 'linkedin.com/in/profile'}
+- GitHub: ${github || 'github.com/profile'}
 
-${experienceSection ? `Experience: ${JSON.stringify(experienceSection.items || [])}` : ''}
+${summarySection ? `Current Summary: ${summarySection.content}` : 'No summary provided'}
 
-${educationSection ? `Education: ${JSON.stringify(educationSection.items || [])}` : ''}
+${skillsSection ? `Current Skills: ${JSON.stringify(skillsSection.items || [])}` : 'No skills listed'}
 
-CRITICAL INSTRUCTIONS:
-    1. Generate a COMPLETE, ACTUAL resume - NOT a template, guide, or example
-    2. Start immediately with: # ${name}
-    3. Use the candidate's actual information provided above
-    4. If information is missing, create realistic professional content that matches the job description
-    5. Structure exactly as shown below - replace placeholders with actual content
-    6. Include at least 500 words of detailed, professional content
-    7. Tailor ALL content to match keywords and requirements from the job description
-    8. Use strong action verbs and include metrics / quantifiable achievements
-    9. NO introductory text, NO explanations, NO \"here is a resume\" - just the resume content
+${experienceSection ? `Work Experience: ${JSON.stringify(experienceSection.items || [])}` : 'No experience provided'}
 
-OUTPUT FORMAT(use actual data, not placeholders):
+${educationSection ? `Education: ${JSON.stringify(educationSection.items || [])}` : 'No education provided'}
+
+=== PHASE 3: GENERATE OPTIMIZED, JOB-TARGETED RESUME ===
+
+CRITICAL TRANSFORMATION RULES - READ CAREFULLY:
+
+1. **Preserve ONLY These Facts**: Company names, job titles, dates from candidate's history, university names, degree names
+2. **DO NOT COPY/REUSE**: NEVER copy the candidate's original bullet points, descriptions, or summary text
+3. **Generate Fresh Content**: Write COMPLETELY NEW achievement descriptions that:
+   - Use different wording than the candidate provided
+   - Add specific metrics and numbers (%, $, user counts, time saved)
+   - Emphasize outcomes relevant to the TARGET JOB (not just what candidate did)
+   - Include technologies and keywords from the job description
+
+4. **Keyword Integration Strategy**:
+   - Identify top 10-15 keywords from job description
+   - Naturally weave these throughout summary, experience bullets, and skills
+   - Don't force-fit keywords - make it read naturally
+
+5. **Quantification Requirements**:
+   - EVERY bullet must include at least one specific metric
+   - Examples: "40% reduction", "500K+ users", "$2M cost savings", "15-person team"
+   - If candidate didn't provide metrics, create reasonable professional estimates
+
+6. **Language Transformation**:
+   - Start EVERY bullet with power verbs: Led, Architected, Drove, Spearheaded, Delivered, Optimized, etc.
+   - Write in past tense for previous roles, present tense for current role
+   - Be specific and concrete - avoid vague terms like "worked on" or "helped with"
+
+7. **Job-Relevance Focus**:
+   - For EACH bullet, ask: "Does this showcase a skill/achievement the job requires?"
+   - If a candidate's experience doesn't directly match, reframe it to highlight transferable skills
+   - Example: If they built internal tools but job needs customer-facing features, emphasize UI/UX, performance, scalability
+
+8. **Skills Enhancement**:
+   - Prioritize skills from job description FIRST
+   - Group into logical categories
+   - Add related/complementary technologies that strengthen candidacy
+   - Remove skills irrelevant to target role
+
+EXAMPLES OF GOOD TRANSFORMATION:
+
+❌ BAD (Just reformatted original):
+"Worked on website builder platform and improved user experience"
+
+✅ GOOD (New, targeted content):
+"Architected drag-and-drop website builder serving 50K+ users monthly, reducing average site creation time from 4 hours to 45 minutes through intuitive component library and real-time preview functionality"
+
+❌ BAD (Copied from candidate):
+"Automated platform features and reduced manual effort"
+
+✅ GOOD (Specific, quantified, job-targeted):
+"Engineered automation framework using Node.js and AWS Lambda to eliminate 80% of manual deployment tasks, accelerating release cycles from bi-weekly to daily while reducing production incidents by 65%"
+
+CONTENT REQUIREMENTS:
+- Minimum 600 words of rich, detailed content
+- Summary: 4-5 compelling sentences (80-100 words) laser-focused on THIS role
+- Each job: 4-6 achievement-oriented bullets with specific metrics
+- Each bullet: 18-30 words with measurable impact
+- Skills: 15-25 skills organized by category, prioritizing job description keywords
+- Professional, confident tone that demonstrates expertise
+
+WARNING: If you simply reformat or slightly reword the candidate's original text, you have FAILED this task. Generate FRESH, JOB-SPECIFIC content.
+
+OUTPUT FORMAT - Write ONLY the resume markdown starting immediately with:
 
 # ${name}
 
-** Email:** ${email}${phone ? ` | **Phone:** ${phone}` : ''}${location ? ` | **Location:** ${location}` : ''}
-${linkedin ? `**LinkedIn:** ${linkedin}` : ''}${github ? ` | **GitHub:** ${github}` : ''}
+**Email:** ${email} | **Phone:** ${phone || '(555) 123-4567'} | **Location:** ${location || 'City, State'}
+${linkedin ? `**LinkedIn:** ${linkedin} | ` : ''}${github ? `**GitHub:** ${github}` : ''}
 
-    ---
+---
 
 ## PROFESSIONAL SUMMARY
 
-    [Write 4 - 5 detailed sentences(80 - 100 words) highlighting the candidate's experience, achievements, and expertise relevant to this specific job. Use information from the candidate details above. If missing, create professional content based on the job requirements.]
+[Write a powerful, job-specific summary that positions the candidate as the ideal fit. Naturally incorporate 3-5 top keywords from the job description. Focus on their unique value proposition for THIS specific role and how their background makes them perfect for this opportunity.]
 
-    ---
+---
 
 ## CORE COMPETENCIES & TECHNICAL SKILLS
 
-    [Extract and list 15 - 20 relevant technical skills from the candidate's skills and job description. Group by category: Programming Languages, Frameworks & Libraries, Cloud & DevOps, Databases, Tools & Platforms]
+[List 15-25 skills organized by relevant categories. PRIORITIZE skills from the job description first, then add complementary skills. Format as:
+**Programming Languages:** Skill1, Skill2, Skill3, Skill4
+**Frameworks & Libraries:** Skill5, Skill6, Skill7
+**Cloud & DevOps:** Skill8, Skill9, Skill10
+**Databases:** Skill11, Skill12
+**Tools & Platforms:** Skill13, Skill14, Skill15]
 
-    ---
+---
 
 ## PROFESSIONAL EXPERIENCE
 
-    [For each position in the candidate's experience, or create 2-3 realistic positions if missing, format as:]
+[For EACH position in the candidate's work history, preserve the company, title, location and dates but COMPLETELY REWRITE the achievements. Format as:]
 
-      ** Position Title ** | ** Company Name ** | Location | Start Date - End Date
+**{exact position title from candidate}** | **{exact company name from candidate}** | {location} | {exact dates from candidate}
 
-        - [Bullet 1: Detailed achievement with metrics and impact, 15 - 25 words]
-    -[Bullet 2: Detailed achievement with metrics and impact, 15 - 25 words]
-    -[Bullet 3: Detailed achievement with metrics and impact, 15 - 25 words]
-    -[Bullet 4: Detailed achievement with metrics and impact, 15 - 25 words]
+- [Achievement bullet emphasizing IMPACT with specific metrics - rewritten to highlight relevance to target role keywords, 20-30 words, start with action verb]
+- [Achievement bullet demonstrating LEADERSHIP or SCALE - mention team size, project scope, or systems complexity, 20-30 words]
+- [Achievement bullet showcasing TECHNICAL DEPTH - reference specific technologies from job description if they could have been used, 20-30 words]
+- [Achievement bullet highlighting BUSINESS VALUE - connect to revenue growth, cost savings, efficiency gains, or user satisfaction, 20-30 words]
+- [Additional achievement bullet for senior roles - emphasize strategic thinking, architecture decisions, or mentorship, 20-30 words]
+- [Optional 6th bullet for exceptional achievements or critical accomplishments, 20-30 words]
 
-    [Repeat for each position.Include 4 - 6 bullets per position.]
+[Repeat this exact format for each position in candidate's history. If candidate has no experience, create 2-3 realistic professional experiences that would make them competitive for this role.]
 
-    ---
+---
 
 ## EDUCATION
 
-      ** Degree Name ** | ** University Name ** | Graduation Year
-      [Relevant coursework, honors, or GPA if applicable]
+**{exact degree from candidate}** | **{exact school from candidate}** | {exact year from candidate}
+[If relevant to the job, add: "Relevant Coursework: {courses that match job requirements}"]
 
-    ---
+---
 
-## PROJECTS
+## PROJECTS & CERTIFICATIONS
 
-      ** Project Name ** | Technologies Used
-        - [Detailed project description with impact and technologies]
+[If the candidate's job experience is limited OR if projects would strengthen their candidacy, add 2-3 relevant projects:]
 
-    ---
+**{Project Name}** | {Technologies matching job description}
+- [Concise description highlighting impact and technologies, demonstrating skills from job requirements]
 
-## CERTIFICATIONS
+[Add relevant certifications if they match job requirements or if commonly desired in this role]
 
-      - [Relevant certification 1]
-      - [Relevant certification 2]
+---
 
-    REMEMBER: Output ONLY the resume content starting with "# ${name}".No other text before or after.`;
+CRITICAL: Output ONLY the resume markdown. Start immediately with "# ${name}". No preamble, no "Here is", no explanations, no code blocks - just the pure markdown resume content.`;
 
     try {
       // Extract job title and company from description if possible
@@ -567,13 +635,49 @@ ${linkedin ? `**LinkedIn:** ${linkedin}` : ''}${github ? ` | **GitHub:** ${githu
     }
 
     // 2. Skills
-    const skillsText = extractSection('Skills') || extractSection('Technical Skills');
+    const skillsText = extractSection('Skills') || extractSection('Technical Skills') || extractSection('Core Competencies');
     if (skillsText) {
       const skillsSection = resume.sections.find(s => s.id === 'skills');
       if (skillsSection) {
-        // Try to split by comma or newline
-        const skills = skillsText.split(/,|\n/).map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('-'));
-        if (skills.length > 0) skillsSection.items = skills;
+        // Parse skills - handle both categorized format and simple lists
+        const skills = [];
+
+        // Split by newlines first
+        const lines = skillsText.split('\n');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('-')) continue;
+
+          // Check if line has category (e.g., "**Programming Languages:** React, Node.js")
+          if (trimmed.includes(':')) {
+            // Extract skills after the colon
+            const afterColon = trimmed.split(':').slice(1).join(':').trim();
+            // Split by comma and clean up
+            const lineSkills = afterColon.split(',').map(s =>
+              s.trim()
+                .replace(/\*\*/g, '') // Remove markdown bold
+                .replace(/`/g, '')    // Remove code ticks
+                .trim()
+            ).filter(s => s.length > 0 && s.length < 50); // Reasonable skill name length
+            skills.push(...lineSkills);
+          } else {
+            // Simple comma-separated line
+            const lineSkills = trimmed.split(',').map(s =>
+              s.trim()
+                .replace(/\*\*/g, '')
+                .replace(/`/g, '')
+                .replace(/^[-•*]\s*/, '') // Remove bullet points
+                .trim()
+            ).filter(s => s.length > 0 && s.length < 50);
+            skills.push(...lineSkills);
+          }
+        }
+
+        // Remove duplicates and ensure all are strings
+        const uniqueSkills = [...new Set(skills)].filter(s => typeof s === 'string' && s.length > 0);
+        if (uniqueSkills.length > 0) {
+          skillsSection.items = uniqueSkills;
+        }
       }
     }
 

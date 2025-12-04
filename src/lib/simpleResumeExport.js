@@ -4,7 +4,7 @@ export class SimpleResumeExport {
     try {
       // Create a simple HTML representation
       const htmlContent = this.generateHTML(resumeData)
-      
+
       // Open in new window for printing
       const printWindow = window.open('', '_blank')
       printWindow.document.write(`
@@ -47,12 +47,12 @@ export class SimpleResumeExport {
         </html>
       `)
       printWindow.document.close()
-      
+
       // Auto-trigger print dialog
       setTimeout(() => {
         printWindow.print()
       }, 500)
-      
+
     } catch (error) {
       console.error('Error generating PDF:', error)
       alert('Error generating PDF. Please try again.')
@@ -63,7 +63,7 @@ export class SimpleResumeExport {
     try {
       // For now, we'll create a simple text version
       const textContent = this.generateText(resumeData)
-      
+
       // Create and download text file
       const blob = new Blob([textContent], { type: 'text/plain' })
       const url = window.URL.createObjectURL(blob)
@@ -74,9 +74,9 @@ export class SimpleResumeExport {
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
-      
+
       alert('Text version downloaded. For full DOCX support, please use the advanced export feature.')
-      
+
     } catch (error) {
       console.error('Error generating DOCX:', error)
       alert('Error generating document. Please try again.')
@@ -85,7 +85,7 @@ export class SimpleResumeExport {
 
   static generateHTML(resumeData) {
     const { personalInfo, summary, skills, experience, education, projects } = resumeData
-    
+
     return `
       <div class="header">
         <div class="name">${personalInfo?.name || 'Your Name'}</div>
@@ -112,7 +112,7 @@ export class SimpleResumeExport {
               <div class="skill-category">
                 <strong>Languages & Databases:</strong>
                 <div class="skill-tags">
-                  ${skills.languages.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                  ${skills.languages.map(skill => `<span class="skill-tag">${typeof skill === 'string' ? skill : (skill.name || skill.skill || '')}</span>`).join('')}
                 </div>
               </div>
             ` : ''}
@@ -120,7 +120,7 @@ export class SimpleResumeExport {
               <div class="skill-category">
                 <strong>Frameworks and Libraries:</strong>
                 <div class="skill-tags">
-                  ${skills.frameworks.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                  ${skills.frameworks.map(skill => `<span class="skill-tag">${typeof skill === 'string' ? skill : (skill.name || skill.skill || '')}</span>`).join('')}
                 </div>
               </div>
             ` : ''}
@@ -128,7 +128,7 @@ export class SimpleResumeExport {
               <div class="skill-category">
                 <strong>Developer Tools:</strong>
                 <div class="skill-tags">
-                  ${skills.tools.map(skill => `<span class="skill-tag">${skill}</span>`).join('')}
+                  ${skills.tools.map(skill => `<span class="skill-tag">${typeof skill === 'string' ? skill : (skill.name || skill.skill || '')}</span>`).join('')}
                 </div>
               </div>
             ` : ''}
@@ -183,28 +183,31 @@ export class SimpleResumeExport {
 
   static generateText(resumeData) {
     const { personalInfo, summary, skills, experience, education, projects } = resumeData
-    
+
     let text = `${personalInfo?.name || 'Your Name'}\n`
     text += `${personalInfo?.phone || ''} | ${personalInfo?.email || ''} | ${personalInfo?.linkedin || ''} | ${personalInfo?.github || ''}\n\n`
-    
+
     if (summary) {
       text += `SUMMARY\n${'='.repeat(50)}\n${summary}\n\n`
     }
-    
+
     if (skills) {
       text += `SKILLS\n${'='.repeat(50)}\n`
       if (skills.languages) {
-        text += `Languages & Databases: ${skills.languages.join(', ')}\n`
+        const skillStrings = skills.languages.map(s => typeof s === 'string' ? s : (s.name || s.skill || ''))
+        text += `Languages & Databases: ${skillStrings.join(', ')}\n`
       }
       if (skills.frameworks) {
-        text += `Frameworks and Libraries: ${skills.frameworks.join(', ')}\n`
+        const skillStrings = skills.frameworks.map(s => typeof s === 'string' ? s : (s.name || s.skill || ''))
+        text += `Frameworks and Libraries: ${skillStrings.join(', ')}\n`
       }
       if (skills.tools) {
-        text += `Developer Tools: ${skills.tools.join(', ')}\n`
+        const skillStrings = skills.tools.map(s => typeof s === 'string' ? s : (s.name || s.skill || ''))
+        text += `Developer Tools: ${skillStrings.join(', ')}\n`
       }
       text += '\n'
     }
-    
+
     if (experience && experience.length > 0) {
       text += `PROFESSIONAL EXPERIENCE\n${'='.repeat(50)}\n`
       experience.forEach(exp => {
@@ -218,14 +221,14 @@ export class SimpleResumeExport {
         text += '\n'
       })
     }
-    
+
     if (education) {
       text += `EDUCATION\n${'='.repeat(50)}\n`
       text += `${education.degree}\n`
       text += `${education.university}\n`
       text += `${education.year} • GPA: ${education.gpa}\n\n`
     }
-    
+
     if (projects && projects.length > 0) {
       text += `PROJECTS\n${'='.repeat(50)}\n`
       projects.forEach(project => {
@@ -237,7 +240,7 @@ export class SimpleResumeExport {
         text += '\n'
       })
     }
-    
+
     return text
   }
 }

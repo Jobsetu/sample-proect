@@ -161,9 +161,69 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
     )
   }
 
+  // Helper function to normalize resume data for export
+  const normalizeResumeData = (resume) => {
+    if (!resume) return null
+
+    // If it already has the flat structure, just normalize skills
+    if (resume.skills && !resume.sections) {
+      const normalized = { ...resume }
+      if (normalized.skills) {
+        // Normalize each skill category
+        if (normalized.skills.languages) {
+          normalized.skills.languages = normalized.skills.languages.map(s =>
+            typeof s === 'string' ? s : (s.name || s.skill || '')
+          )
+        }
+        if (normalized.skills.frameworks) {
+          normalized.skills.frameworks = normalized.skills.frameworks.map(s =>
+            typeof s === 'string' ? s : (s.name || s.skill || '')
+          )
+        }
+        if (normalized.skills.tools) {
+          normalized.skills.tools = normalized.skills.tools.map(s =>
+            typeof s === 'string' ? s : (s.name || s.skill || '')
+          )
+        }
+      }
+      return normalized
+    }
+
+    // Convert sections-based structure to flat structure
+    const sections = resume.sections || []
+    const skillsSection = sections.find(s => s.id === 'skills')
+    const summarySection = sections.find(s => s.id === 'summary')
+    const experienceSection = sections.find(s => s.id === 'experience')
+    const educationSection = sections.find(s => s.id === 'education')
+
+    // Normalize skills - convert objects to strings
+    let skillsData = null
+    if (skillsSection?.items) {
+      const skillStrings = skillsSection.items.map(s =>
+        typeof s === 'string' ? s : (s.name || s.skill || '')
+      ).filter(s => s)
+
+      skillsData = {
+        languages: skillStrings,
+        frameworks: [],
+        tools: []
+      }
+    }
+
+    return {
+      personalInfo: resume.personalInfo,
+      summary: summarySection?.content,
+      skills: skillsData,
+      experience: experienceSection?.items || [],
+      education: educationSection?.items?.[0],
+      projects: []
+    }
+  }
+
   const downloadPDF = async () => {
     try {
-      const resumeData = customResume || userResume || sampleResume
+      const rawData = customResume || userResume || sampleResume
+      const resumeData = normalizeResumeData(rawData)
       // Try advanced export first, fallback to simple export
       try {
         await ResumeExportService.downloadPDF(resumeData, 'custom-resume.pdf', resumeStyle)
@@ -179,7 +239,8 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
 
   const downloadDOCX = async () => {
     try {
-      const resumeData = customResume || userResume || sampleResume
+      const rawData = customResume || userResume || sampleResume
+      const resumeData = normalizeResumeData(rawData)
       // Try advanced export first, fallback to simple export
       try {
         await ResumeExportService.downloadDOCX(resumeData, 'custom-resume.docx', resumeStyle)
