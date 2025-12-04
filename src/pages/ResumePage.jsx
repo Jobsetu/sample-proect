@@ -76,9 +76,14 @@ const ResumePage = () => {
         }
     }, [searchParams])
 
+    const resume = useResumeStore(state => state.resume)
+
     useEffect(() => {
         if (authUser) {
-            loadUserResume()
+            // Only load from DB if store is empty/default to avoid overwriting generated resume
+            if (resume?.personalInfo?.name === 'Your Name' || !resume?.personalInfo?.name) {
+                loadUserResume()
+            }
         }
     }, [authUser])
 

@@ -53,7 +53,7 @@ class ResumeService:
                 elif section_id == 'experience':
                     for item in section.get('items', []):
                         parsed['experience'].append({
-                            'position': item.get('position', ''),
+                            'position': item.get('position', item.get('role', '')),
                             'company': item.get('company', ''),
                             'location': item.get('location', ''),
                             'start_date': item.get('startDate', ''),

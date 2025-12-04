@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  X, 
-  ChevronLeft, 
-  ChevronRight, 
-  Download, 
-  FileText, 
-  Edit3, 
-  Palette, 
-  CheckCircle, 
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  FileText,
+  Edit3,
+  Palette,
+  CheckCircle,
   AlertCircle,
   Star,
   Zap,
@@ -24,7 +24,7 @@ import { useAuth } from '../contexts/AuthContext'
 const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
   const { user } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
-  const [selectedSections, setSelectedSections] = useState(['summary', 'skills', 'experience'])
+  const [selectedSections, setSelectedSections] = useState(['summary', 'skills', 'experience', 'education', 'projects', 'activities'])
   const [selectedSkills, setSelectedSkills] = useState([])
   const [resumeAnalysis, setResumeAnalysis] = useState(null)
   const [customResume, setCustomResume] = useState(null)
@@ -37,7 +37,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
     sectionSpacing: 12,
     margin: 1
   })
-  
+
 
   // Sample resume data for demonstration
   const sampleResume = {
@@ -92,7 +92,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
   }
 
   const availableSkills = [
-    'JavaScript/TypeScript', 'React/Redux', 'Docker', 'GraphQL', 
+    'JavaScript/TypeScript', 'React/Redux', 'Docker', 'GraphQL',
     'SQL DB', 'No-SQL DB', 'Mentoring Engineers', 'Cross-functional collaboration',
     'AWS', 'Node.js', 'Python', 'Java', 'Git', 'Agile', 'REST APIs'
   ]
@@ -117,7 +117,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
     try {
       const analysis = await GeminiService.generateResumeAnalysis(
         jobData?.description || 'Software Engineer position',
-        sampleResume
+        userResume || sampleResume
       )
       setResumeAnalysis(analysis)
     } catch (error) {
@@ -132,7 +132,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
     try {
       const custom = await GeminiService.generateCustomResume(
         jobData?.description || 'Software Engineer position',
-        sampleResume,
+        userResume || sampleResume,
         selectedSections,
         selectedSkills
       )
@@ -146,16 +146,16 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
   }
 
   const handleSectionToggle = (sectionId) => {
-    setSelectedSections(prev => 
-      prev.includes(sectionId) 
+    setSelectedSections(prev =>
+      prev.includes(sectionId)
         ? prev.filter(id => id !== sectionId)
         : [...prev, sectionId]
     )
   }
 
   const handleSkillToggle = (skill) => {
-    setSelectedSkills(prev => 
-      prev.includes(skill) 
+    setSelectedSkills(prev =>
+      prev.includes(skill)
         ? prev.filter(s => s !== skill)
         : [...prev, skill]
     )
@@ -163,7 +163,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
 
   const downloadPDF = async () => {
     try {
-      const resumeData = customResume || sampleResume
+      const resumeData = customResume || userResume || sampleResume
       // Try advanced export first, fallback to simple export
       try {
         await ResumeExportService.downloadPDF(resumeData, 'custom-resume.pdf', resumeStyle)
@@ -179,7 +179,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
 
   const downloadDOCX = async () => {
     try {
-      const resumeData = customResume || sampleResume
+      const resumeData = customResume || userResume || sampleResume
       // Try advanced export first, fallback to simple export
       try {
         await ResumeExportService.downloadDOCX(resumeData, 'custom-resume.docx', resumeStyle)
@@ -193,7 +193,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
     }
   }
 
-  
+
 
   if (!isOpen) return null
 
@@ -235,24 +235,21 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
               <div className="flex items-center space-x-4 mb-8">
                 {[1, 2, 3].map((step) => (
                   <div key={step} className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      currentStep >= step 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-gray-200 text-gray-600'
-                    }`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${currentStep >= step
+                      ? 'bg-green-500 text-white'
+                      : 'bg-gray-200 text-gray-600'
+                      }`}>
                       {step}
                     </div>
-                    <span className={`ml-2 text-sm ${
-                      currentStep >= step ? 'text-green-600 font-medium' : 'text-gray-500'
-                    }`}>
+                    <span className={`ml-2 text-sm ${currentStep >= step ? 'text-green-600 font-medium' : 'text-gray-500'
+                      }`}>
                       {step === 1 && 'See Your Difference'}
                       {step === 2 && 'Align Your Resume'}
                       {step === 3 && 'Review Your New Resume'}
                     </span>
                     {step < 3 && (
-                      <div className={`w-12 h-0.5 mx-4 ${
-                        currentStep > step ? 'bg-green-500' : 'bg-gray-200'
-                      }`} />
+                      <div className={`w-12 h-0.5 mx-4 ${currentStep > step ? 'bg-green-500' : 'bg-gray-200'
+                        }`} />
                     )}
                   </div>
                 ))}
@@ -284,7 +281,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                       Your resume
                     </label>
                     <select className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500">
-                      <option>Prasad_Bylapudi - Full Stack Developer.pdf</option>
+                      <option>{(userResume?.personalInfo?.name || 'My Resume')}.pdf</option>
                     </select>
                   </div>
 
@@ -299,12 +296,12 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                     </div>
                     <div className="divide-y divide-gray-200">
                       {[
-                        { job: 'Software Engineer II', resume: 'Software Engineer - Full Stack', match: false },
-                        { job: '2+ years exp', resume: '2+ years exp', match: true },
-                        { job: "Bachelor's and/or Master's degree", resume: 'B.Tech., Computer Science', match: true },
+                        { job: jobData?.title || 'Software Engineer', resume: (userResume?.personalInfo?.title || 'Software Engineer'), match: false },
+                        { job: jobData?.experience || '2+ years exp', resume: '2+ years exp', match: true },
+                        { job: "Bachelor's and/or Master's degree", resume: (userResume?.education?.[0]?.degree || 'Degree'), match: true },
                         { job: 'Industry Experience', resume: 'Partial match', match: 'partial' },
                         { job: 'Job Keywords (5/7)', resume: '5/7 matched', match: 'partial' },
-                        { job: 'Summary', resume: 'Missing summary section', match: false }
+                        { job: 'Summary', resume: (userResume?.sections?.find(s => s.id === 'summary') ? 'Present' : 'Missing summary'), match: !!userResume?.sections?.find(s => s.id === 'summary') }
                       ].map((row, index) => (
                         <div key={index} className="px-6 py-4 grid grid-cols-3 gap-4">
                           <div className="text-gray-700">{row.job}</div>
@@ -365,11 +362,10 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                           <button
                             key={skill}
                             onClick={() => handleSkillToggle(skill)}
-                            className={`px-3 py-1 rounded-full text-sm border transition-colors ${
-                              selectedSkills.includes(skill)
-                                ? 'bg-green-100 border-green-300 text-green-700'
-                                : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
-                            }`}
+                            className={`px-3 py-1 rounded-full text-sm border transition-colors ${selectedSkills.includes(skill)
+                              ? 'bg-green-100 border-green-300 text-green-700'
+                              : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+                              }`}
                           >
                             {skill}
                           </button>
@@ -414,13 +410,13 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                       {/* Resume Header */}
                       <div className="text-center mb-8">
                         <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                          {customResume?.personalInfo?.name || sampleResume.personalInfo.name}
+                          {customResume?.personalInfo?.name || userResume?.personalInfo?.name || sampleResume.personalInfo.name}
                         </h1>
                         <div className="text-sm text-gray-600 space-y-1">
-                          <p>{customResume?.personalInfo?.phone || sampleResume.personalInfo.phone}</p>
-                          <p>{customResume?.personalInfo?.email || sampleResume.personalInfo.email}</p>
-                          <p>{customResume?.personalInfo?.linkedin || sampleResume.personalInfo.linkedin}</p>
-                          <p>{customResume?.personalInfo?.github || sampleResume.personalInfo.github}</p>
+                          <p>{customResume?.personalInfo?.phone || userResume?.personalInfo?.phone || sampleResume.personalInfo.phone}</p>
+                          <p>{customResume?.personalInfo?.email || userResume?.personalInfo?.email || sampleResume.personalInfo.email}</p>
+                          <p>{customResume?.personalInfo?.linkedin || userResume?.personalInfo?.linkedin || sampleResume.personalInfo.linkedin}</p>
+                          <p>{customResume?.personalInfo?.github || userResume?.personalInfo?.github || sampleResume.personalInfo.github}</p>
                         </div>
                       </div>
 
@@ -428,7 +424,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                       <div className="mb-6">
                         <h2 className="text-lg font-semibold text-gray-900 mb-2">Summary</h2>
                         <p className="text-gray-700 text-sm leading-relaxed">
-                          {customResume?.summary || sampleResume.summary}
+                          {customResume?.summary || userResume?.sections?.find(s => s.id === 'summary')?.content || sampleResume.summary}
                         </p>
                       </div>
 
@@ -439,19 +435,32 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                           <div>
                             <span className="font-medium text-gray-700">Languages & Databases: </span>
                             <span className="text-gray-600">
-                              {(customResume?.skills?.languages || sampleResume.skills.languages).join(', ')}
+                              {(() => {
+                                const skills = customResume?.skills?.languages || userResume?.sections?.find(s => s.id === 'skills')?.items || sampleResume.skills.languages;
+                                // Handle both string arrays and object arrays
+                                const skillStrings = Array.isArray(skills) ? skills.map(s => typeof s === 'string' ? s : (s.name || s.skill || JSON.stringify(s))) : [];
+                                return skillStrings.join(', ');
+                              })()}
                             </span>
                           </div>
                           <div>
                             <span className="font-medium text-gray-700">Frameworks and Libraries: </span>
                             <span className="text-gray-600">
-                              {(customResume?.skills?.frameworks || sampleResume.skills.frameworks).join(', ')}
+                              {(() => {
+                                const skills = customResume?.skills?.frameworks || [];
+                                const skillStrings = Array.isArray(skills) ? skills.map(s => typeof s === 'string' ? s : (s.name || s.skill || JSON.stringify(s))) : [];
+                                return skillStrings.join(', ');
+                              })()}
                             </span>
                           </div>
                           <div>
                             <span className="font-medium text-gray-700">Developer Tools: </span>
                             <span className="text-gray-600">
-                              {(customResume?.skills?.tools || sampleResume.skills.tools).join(', ')}
+                              {(() => {
+                                const skills = customResume?.skills?.tools || [];
+                                const skillStrings = Array.isArray(skills) ? skills.map(s => typeof s === 'string' ? s : (s.name || s.skill || JSON.stringify(s))) : [];
+                                return skillStrings.join(', ');
+                              })()}
                             </span>
                           </div>
                         </div>
@@ -460,15 +469,15 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                       {/* Experience */}
                       <div className="mb-6">
                         <h2 className="text-lg font-semibold text-gray-900 mb-2">Professional Experience</h2>
-                        {(customResume?.experience || sampleResume.experience).map((exp, index) => (
+                        {(customResume?.experience || userResume?.sections?.find(s => s.id === 'experience')?.items || sampleResume.experience).map((exp, index) => (
                           <div key={index} className="mb-4">
                             <div className="flex justify-between items-start mb-1">
-                              <h3 className="font-semibold text-gray-900">{exp.position}</h3>
-                              <span className="text-sm text-gray-600">{exp.duration}</span>
+                              <h3 className="font-semibold text-gray-900">{exp.position || exp.role}</h3>
+                              <span className="text-sm text-gray-600">{exp.duration || (exp.startDate + ' - ' + exp.endDate)}</span>
                             </div>
                             <p className="text-sm text-gray-700 mb-2">{exp.company}</p>
                             <ul className="text-sm text-gray-600 space-y-1">
-                              {exp.achievements.map((achievement, i) => (
+                              {(exp.achievements || exp.bullets || []).map((achievement, i) => (
                                 <li key={i} className="flex items-start">
                                   <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-2 mr-2 flex-shrink-0" />
                                   {achievement}
@@ -484,14 +493,14 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                         <h2 className="text-lg font-semibold text-gray-900 mb-2">Education</h2>
                         <div>
                           <h3 className="font-semibold text-gray-900">
-                            {customResume?.education?.degree || sampleResume.education.degree}
+                            {customResume?.education?.degree || userResume?.sections?.find(s => s.id === 'education')?.items?.[0]?.degree || sampleResume.education.degree}
                           </h3>
                           <p className="text-sm text-gray-700">
-                            {customResume?.education?.university || sampleResume.education.university}
+                            {customResume?.education?.university || userResume?.sections?.find(s => s.id === 'education')?.items?.[0]?.school || sampleResume.education.university}
                           </p>
                           <p className="text-sm text-gray-600">
-                            {customResume?.education?.year || sampleResume.education.year} • 
-                            GPA: {customResume?.education?.gpa || sampleResume.education.gpa}
+                            {customResume?.education?.year || userResume?.sections?.find(s => s.id === 'education')?.items?.[0]?.year || sampleResume.education.year} •
+                            GPA: {customResume?.education?.gpa || userResume?.sections?.find(s => s.id === 'education')?.items?.[0]?.gpa || sampleResume.education.gpa}
                           </p>
                         </div>
                       </div>
@@ -543,11 +552,10 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                      activeTab === tab.id
-                        ? 'bg-green-100 text-green-700'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                    className={`flex-1 flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-sm font-medium transition-colors ${activeTab === tab.id
+                      ? 'bg-green-100 text-green-700'
+                      : 'text-gray-600 hover:text-gray-900'
+                      }`}
                   >
                     <tab.icon className="w-4 h-4" />
                     <span>{tab.name}</span>
@@ -620,7 +628,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
 
                   <div className="space-y-2">
                     {[
-                      'Personal Info', 'Summary', 'Skills', 'Professional Experience', 
+                      'Personal Info', 'Summary', 'Skills', 'Professional Experience',
                       'Education', 'Project', 'Activities'
                     ].map((section, index) => (
                       <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
@@ -645,14 +653,14 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
 
               {activeTab === 'style' && (
                 <div className="space-y-6">
-                  
+
 
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-3">Font</h4>
                     <div className="space-y-3">
                       <div>
                         <label className="block text-sm text-gray-700 mb-1">Font Family</label>
-                        <select 
+                        <select
                           value={resumeStyle.fontFamily}
                           onChange={(e) => setResumeStyle(prev => ({ ...prev, fontFamily: e.target.value }))}
                           className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -665,8 +673,8 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
                       <div>
                         <label className="block text-sm text-gray-700 mb-1">Name</label>
                         <div className="flex space-x-2">
-                          <input 
-                            type="number" 
+                          <input
+                            type="number"
                             value={resumeStyle.fontSize}
                             onChange={(e) => setResumeStyle(prev => ({ ...prev, fontSize: e.target.value }))}
                             className="flex-1 p-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -761,7 +769,7 @@ const ResumeCustomizationModal = ({ isOpen, onClose, jobData, userResume }) => {
         </motion.div>
       </motion.div>
 
-      
+
     </AnimatePresence>
   )
 }

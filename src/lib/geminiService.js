@@ -101,7 +101,10 @@ export class GeminiService {
     `;
 
     try {
-      const response = await this.callBackend('generate-resume', { input: prompt });
+      const response = await this.callBackend('generate-resume', {
+        input: prompt,
+        mode: 'custom'
+      });
       let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
       return this.parseAIResponse(text);
     } catch (error) {
@@ -122,6 +125,47 @@ export class GeminiService {
 
     const hasExperience = userResume.sections.find(s => s.id === 'experience')?.items?.length > 0;
 
+    const instructions = [];
+    const outputStructure = {};
+
+    // 1. Summary
+    if (selectedSections.includes('summary')) {
+      instructions.push(`1. **Summary**: Write a new, powerful 3-4 sentence Professional Summary tailored to this job.`);
+      outputStructure.summary = "New summary text...";
+    }
+
+    // 2. Skills
+    if (selectedSections.includes('skills')) {
+      instructions.push(`2. **Skills**: specific list of technical and soft skills relevant to the job.`);
+      outputStructure.skills = ["Skill 1", "Skill 2"];
+    }
+
+    // 3. Experience
+    if (selectedSections.includes('experience')) {
+      instructions.push(`3. **Experience**: ${hasExperience
+        ? 'For each job in the resume, provide 2-3 improved bullet points that highlight impact and relevance to the new job. Match the "company" name exactly.'
+        : 'Create 2 relevant professional experience entries that would make this candidate a strong fit for the job. Use realistic but generic company names and dates.'}`);
+      outputStructure.experience = [{ "company": "Company Name", "role": "Job Title", "location": "City, State", "startDate": "YYYY", "endDate": "YYYY", "bullets": ["Bullet 1", "Bullet 2"] }];
+    }
+
+    // 4. Projects
+    if (selectedSections.includes('projects')) {
+      instructions.push(`4. **Projects**: Generate 2-3 relevant side projects or academic projects that demonstrate skills required for this job.`);
+      outputStructure.projects = [{ "title": "Project Title", "subtitle": "Technologies Used", "description": "Brief description", "technologies": ["Tech 1"] }];
+    }
+
+    // 5. Education
+    if (selectedSections.includes('education')) {
+      instructions.push(`5. **Education**: Optimize the education section. Keep the degree and university, but you may add relevant coursework or honors if implied by the job description.`);
+      outputStructure.education = { "degree": "Degree", "university": "University", "year": "Year", "gpa": "GPA" };
+    }
+
+    // 6. Activities/Certifications
+    if (selectedSections.includes('activities')) {
+      instructions.push(`6. **Activities**: List relevant activities or certifications.`);
+      outputStructure.activities = ["Activity 1", "Certification 1"];
+    }
+
     const prompt = `
       You are an expert resume writer. I need you to update specific sections of a candidate's resume to better match a job description.
 
@@ -132,30 +176,22 @@ export class GeminiService {
       ${JSON.stringify(userResume.sections)}
 
       INSTRUCTIONS:
-      1. **Summary**: Write a new, powerful 3-4 sentence Professional Summary tailored to this job.
-      2. **Skills**: specific list of technical and soft skills relevant to the job.
-      3. **Experience**: ${hasExperience
-        ? 'For each job in the resume, provide 2-3 improved bullet points that highlight impact and relevance to the new job. Match the "company" name exactly.'
-        : 'Create 2 relevant professional experience entries that would make this candidate a strong fit for the job. Use realistic but generic company names (e.g., "Tech Solutions Inc", "Global Corp") and dates.'}
-      4. **Projects**: Generate 2-3 relevant side projects or academic projects that demonstrate skills required for this job.
+      ${instructions.join('\n')}
 
       OUTPUT FORMAT:
-      Return ONLY a valid JSON object with this structure:
-      {
-        "summary": "New summary text...",
-        "skills": ["Skill 1", "Skill 2", ...],
-        "experience": [
-          { "company": "Company Name", "role": "Job Title", "location": "City, State", "startDate": "YYYY", "endDate": "YYYY", "bullets": ["Bullet 1", "Bullet 2"] }
-        ],
-        "projects": [
-          { "title": "Project Title", "subtitle": "Technologies Used", "description": "Brief description of what was built and its impact.", "technologies": ["Tech 1", "Tech 2"] }
-        ]
-      }
+      Return ONLY a valid JSON object with the requested keys.
+      DO NOT include any conversational text, markdown formatting (like \`\`\`json), or explanations.
+      START your response with { and END with }.
+        ${JSON.stringify(outputStructure, null, 2)}
     `;
 
     try {
       console.log('Sending surgical update prompt to backend...');
-      const response = await this.callBackend('generate-resume', { input: prompt });
+      const response = await this.callBackend('generate-resume', {
+        input: prompt,
+        mode: 'custom',
+        resume: userResume // Also pass resume for logging/fallback purposes
+      });
 
       let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
       console.log('Processed text for parsing:', text);
@@ -252,6 +288,39 @@ export class GeminiService {
         }
       }
 
+      // 5. Update Education
+      if (updates.education) {
+        const eduSection = newResume.sections.find(s => s.id === 'education');
+        if (eduSection) {
+          // If array, take first item or map. If object, use directly.
+          if (Array.isArray(updates.education)) {
+            // If the update returns an array, replace items
+            eduSection.items = updates.education;
+          } else if (typeof updates.education === 'object') {
+            // If it returns a single object, assume it's the first item
+            if (eduSection.items.length > 0) {
+              Object.assign(eduSection.items[0], updates.education);
+            } else {
+              eduSection.items = [updates.education];
+            }
+          }
+        }
+      }
+
+      // 6. Update Activities
+      if (updates.activities && Array.isArray(updates.activities)) {
+        const actSection = newResume.sections.find(s => s.id === 'activities');
+        if (actSection) {
+          actSection.items = updates.activities;
+        } else {
+          newResume.sections.push({
+            id: 'activities',
+            title: 'Activities',
+            items: updates.activities
+          });
+        }
+      }
+
       return newResume;
 
     } catch (error) {
@@ -270,16 +339,16 @@ export class GeminiService {
       
       MY RESUME:
       ${JSON.stringify(userResume)}
-      
-      INSTRUCTIONS:
-      1. **Tone**: Professional, enthusiastic, and confident.
-      2. **Structure**:
-         - **Opening**: State the role applied for and why I am a great fit.
-         - **Body Paragraph 1**: Highlight specific achievements from my resume that match the job requirements.
-         - **Body Paragraph 2**: Explain why I am interested in this specific company/role.
-         - **Closing**: Call to action (request interview) and professional sign-off.
-      3. **Specifics**: Use actual numbers and metrics from my resume. Do NOT use placeholders like "[Company Name]" - extract the company name from the job description.
-      4. **Length**: 300-400 words.
+
+    INSTRUCTIONS:
+    1. ** Tone **: Professional, enthusiastic, and confident.
+      2. ** Structure **:
+         - ** Opening **: State the role applied for and why I am a great fit.
+         - ** Body Paragraph 1 **: Highlight specific achievements from my resume that match the job requirements.
+         - ** Body Paragraph 2 **: Explain why I am interested in this specific company / role.
+         - ** Closing **: Call to action(request interview) and professional sign - off.
+      3. ** Specifics **: Use actual numbers and metrics from my resume.Do NOT use placeholders like "[Company Name]" - extract the company name from the job description.
+      4. ** Length **: 300 - 400 words.
       
       Return ONLY the cover letter text.
     `;
@@ -294,7 +363,7 @@ export class GeminiService {
   }
 
   static async generateMockInterviewQuestions(jobDescription, userResume) {
-    const prompt = `Generate 5 interview questions for this job and resume. Return JSON array of strings. Job: ${jobDescription} Resume: ${JSON.stringify(userResume)}`;
+    const prompt = `Generate 5 interview questions for this job and resume.Return JSON array of strings.Job: ${jobDescription} Resume: ${JSON.stringify(userResume)} `;
     try {
       const response = await this.callBackend('mock-interview', { messages: [{ role: "user", content: prompt }] });
       let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
@@ -305,7 +374,7 @@ export class GeminiService {
   }
 
   static async analyzeInterviewAnswer(question, answer) {
-    const prompt = `Analyze answer: "${answer}" for question: "${question}". Return JSON: { rating, feedback, improvedAnswer }`;
+    const prompt = `Analyze answer: "${answer}" for question: "${question}".Return JSON: { rating, feedback, improvedAnswer } `;
     try {
       const response = await this.callBackend('mock-interview', { messages: [{ role: "user", content: prompt }] });
       let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
@@ -316,7 +385,7 @@ export class GeminiService {
   }
 
   static async generateNextInterviewQuestion(role, lastQuestion, lastAnswer) {
-    const prompt = `Role: ${role}. Last Q: ${lastQuestion}. Last A: ${lastAnswer}. Next Question?`;
+    const prompt = `Role: ${role}. Last Q: ${lastQuestion}. Last A: ${lastAnswer}. Next Question ? `;
     try {
       const response = await this.callBackend('mock-interview', { messages: [{ role: "user", content: prompt }] });
       let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
@@ -327,7 +396,7 @@ export class GeminiService {
   }
 
   static async generateInterviewInsights(jobDescription, userResume, questions) {
-    const prompt = `Insights for Job: ${jobDescription}, Resume: ${JSON.stringify(userResume)}. Return JSON: { overallScore, strengths, areasForImprovement, recommendations }`;
+    const prompt = `Insights for Job: ${jobDescription}, Resume: ${JSON.stringify(userResume)}. Return JSON: { overallScore, strengths, areasForImprovement, recommendations } `;
     try {
       const response = await this.callBackend('mock-interview', { messages: [{ role: "user", content: prompt }] });
       let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
@@ -352,18 +421,18 @@ export class GeminiService {
     const skillsSection = sections.find(s => s.id === 'skills')
     const summarySection = sections.find(s => s.id === 'summary')
 
-    const prompt = `You are a professional resume writer. Create a complete, tailored resume in Markdown format.
+    const prompt = `You are a professional resume writer.Create a complete, tailored resume in Markdown format.
 
 JOB DESCRIPTION:
 ${jobDescription}
 
 CANDIDATE DETAILS:
-Name: ${name}
-Email: ${email}
-Phone: ${phone || 'Not provided'}
-Location: ${location || 'Not provided'}
-LinkedIn: ${linkedin || 'Not provided'}
-GitHub: ${github || 'Not provided'}
+    Name: ${name}
+    Email: ${email}
+    Phone: ${phone || 'Not provided'}
+    Location: ${location || 'Not provided'}
+    LinkedIn: ${linkedin || 'Not provided'}
+    GitHub: ${github || 'Not provided'}
 
 ${summarySection ? `Summary: ${summarySection.content}` : ''}
 
@@ -374,72 +443,72 @@ ${experienceSection ? `Experience: ${JSON.stringify(experienceSection.items || [
 ${educationSection ? `Education: ${JSON.stringify(educationSection.items || [])}` : ''}
 
 CRITICAL INSTRUCTIONS:
-1. Generate a COMPLETE, ACTUAL resume - NOT a template, guide, or example
-2. Start immediately with: # ${name}
-3. Use the candidate's actual information provided above
-4. If information is missing, create realistic professional content that matches the job description
-5. Structure exactly as shown below - replace placeholders with actual content
-6. Include at least 500 words of detailed, professional content
-7. Tailor ALL content to match keywords and requirements from the job description
-8. Use strong action verbs and include metrics/quantifiable achievements
-9. NO introductory text, NO explanations, NO "here is a resume" - just the resume content
+    1. Generate a COMPLETE, ACTUAL resume - NOT a template, guide, or example
+    2. Start immediately with: # ${name}
+    3. Use the candidate's actual information provided above
+    4. If information is missing, create realistic professional content that matches the job description
+    5. Structure exactly as shown below - replace placeholders with actual content
+    6. Include at least 500 words of detailed, professional content
+    7. Tailor ALL content to match keywords and requirements from the job description
+    8. Use strong action verbs and include metrics / quantifiable achievements
+    9. NO introductory text, NO explanations, NO \"here is a resume\" - just the resume content
 
-OUTPUT FORMAT (use actual data, not placeholders):
+OUTPUT FORMAT(use actual data, not placeholders):
 
 # ${name}
 
-**Email:** ${email}${phone ? ` | **Phone:** ${phone}` : ''}${location ? ` | **Location:** ${location}` : ''}
+** Email:** ${email}${phone ? ` | **Phone:** ${phone}` : ''}${location ? ` | **Location:** ${location}` : ''}
 ${linkedin ? `**LinkedIn:** ${linkedin}` : ''}${github ? ` | **GitHub:** ${github}` : ''}
 
----
+    ---
 
 ## PROFESSIONAL SUMMARY
 
-[Write 4-5 detailed sentences (80-100 words) highlighting the candidate's experience, achievements, and expertise relevant to this specific job. Use information from the candidate details above. If missing, create professional content based on the job requirements.]
+    [Write 4 - 5 detailed sentences(80 - 100 words) highlighting the candidate's experience, achievements, and expertise relevant to this specific job. Use information from the candidate details above. If missing, create professional content based on the job requirements.]
 
----
+    ---
 
 ## CORE COMPETENCIES & TECHNICAL SKILLS
 
-[Extract and list 15-20 relevant technical skills from the candidate's skills and job description. Group by category: Programming Languages, Frameworks & Libraries, Cloud & DevOps, Databases, Tools & Platforms]
+    [Extract and list 15 - 20 relevant technical skills from the candidate's skills and job description. Group by category: Programming Languages, Frameworks & Libraries, Cloud & DevOps, Databases, Tools & Platforms]
 
----
+    ---
 
 ## PROFESSIONAL EXPERIENCE
 
-[For each position in the candidate's experience, or create 2-3 realistic positions if missing, format as:]
+    [For each position in the candidate's experience, or create 2-3 realistic positions if missing, format as:]
 
-**Position Title** | **Company Name** | Location | Start Date - End Date
+      ** Position Title ** | ** Company Name ** | Location | Start Date - End Date
 
-- [Bullet 1: Detailed achievement with metrics and impact, 15-25 words]
-- [Bullet 2: Detailed achievement with metrics and impact, 15-25 words]
-- [Bullet 3: Detailed achievement with metrics and impact, 15-25 words]
-- [Bullet 4: Detailed achievement with metrics and impact, 15-25 words]
+        - [Bullet 1: Detailed achievement with metrics and impact, 15 - 25 words]
+    -[Bullet 2: Detailed achievement with metrics and impact, 15 - 25 words]
+    -[Bullet 3: Detailed achievement with metrics and impact, 15 - 25 words]
+    -[Bullet 4: Detailed achievement with metrics and impact, 15 - 25 words]
 
-[Repeat for each position. Include 4-6 bullets per position.]
+    [Repeat for each position.Include 4 - 6 bullets per position.]
 
----
+    ---
 
 ## EDUCATION
 
-**Degree Name** | **University Name** | Graduation Year
-[Relevant coursework, honors, or GPA if applicable]
+      ** Degree Name ** | ** University Name ** | Graduation Year
+      [Relevant coursework, honors, or GPA if applicable]
 
----
+    ---
 
 ## PROJECTS
 
-**Project Name** | Technologies Used
-- [Detailed project description with impact and technologies]
+      ** Project Name ** | Technologies Used
+        - [Detailed project description with impact and technologies]
 
----
+    ---
 
 ## CERTIFICATIONS
 
-- [Relevant certification 1]
-- [Relevant certification 2]
+      - [Relevant certification 1]
+      - [Relevant certification 2]
 
-REMEMBER: Output ONLY the resume content starting with "# ${name}". No other text before or after.`;
+    REMEMBER: Output ONLY the resume content starting with "# ${name}".No other text before or after.`;
 
     try {
       // Extract job title and company from description if possible
@@ -476,9 +545,9 @@ REMEMBER: Output ONLY the resume content starting with "# ${name}". No other tex
   static parseResumeMarkdown(markdown, originalResume) {
     // Helper to extract section content
     const extractSection = (header) => {
-      const regex = new RegExp(`#{1,3}\\s*${header}[\\s\\S]*?(?=#{1,3}|$)`, 'i');
+      const regex = new RegExp(`#{ 1, 3 } \\s * ${header} [\\s\\S] *? (?=#{ 1, 3 }| $)`, 'i');
       const match = markdown.match(regex);
-      return match ? match[0].replace(new RegExp(`#{1,3}\\s*${header}`, 'i'), '').trim() : '';
+      return match ? match[0].replace(new RegExp(`#{ 1, 3 } \\s * ${header} `, 'i'), '').trim() : '';
     };
 
     // Helper to parse bullets
@@ -519,7 +588,7 @@ REMEMBER: Output ONLY the resume content starting with "# ${name}". No other tex
 
         expSection.items.forEach(item => {
           // Find the block of text for this company
-          const companyRegex = new RegExp(`(.*?${item.company}.*?)(?=\n.*?\\||\n.*?\\d{4}|$)`, 'is');
+          const companyRegex = new RegExp(`(.*? ${item.company}.*?)(?=\n.*?\\||\n.*?\\d{ 4} | $)`, 'is');
           // This is too hard to regex perfectly.
           // Alternative: Just ask AI for JSON? No, we want robust text.
           // Let's just use the markdown text for the "Copy" feature, and for the PDF...

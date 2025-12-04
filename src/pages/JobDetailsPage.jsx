@@ -2,18 +2,18 @@ import { useState, useEffect } from 'react'
 import { Link, useParams, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import ResumeCustomizationModal from '../components/ResumeCustomizationModal'
-import { 
-  ArrowLeft, 
-  Share2, 
-  Flag, 
-  ExternalLink, 
-  MapPin, 
-  Clock, 
-  DollarSign, 
-  Users, 
-  Briefcase, 
-  Target, 
-  CheckCircle, 
+import {
+  ArrowLeft,
+  Share2,
+  Flag,
+  ExternalLink,
+  MapPin,
+  Clock,
+  DollarSign,
+  Users,
+  Briefcase,
+  Target,
+  CheckCircle,
   Star,
   Building2,
   Calendar,
@@ -28,6 +28,7 @@ import {
   Send
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
+import { useResumeStore } from '../stores/useResumeStore'
 
 const JobDetailsPage = () => {
   const { jobId } = useParams()
@@ -175,7 +176,7 @@ const JobDetailsPage = () => {
                 </Link>
               </nav>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <button className="p-2 text-gray-300 hover:text-white transition-colors">
                 <MessageCircle className="w-5 h-5" />
@@ -214,7 +215,7 @@ const JobDetailsPage = () => {
                   </button>
                   <span className="text-gray-400">{job.applicants}</span>
                 </div>
-                
+
                 <div className="flex items-center space-x-2">
                   <button className="p-2 rounded-full hover:bg-white/10 transition-colors">
                     <Share2 className="w-5 h-5 text-gray-300" />
@@ -310,7 +311,7 @@ const JobDetailsPage = () => {
                   <MessageCircle className="w-4 h-4" />
                   <span>Maximize your interview chances</span>
                 </button>
-                <button 
+                <button
                   onClick={() => setIsResumeModalOpen(true)}
                   className="flex items-center space-x-2 bg-primary-500/20 text-primary-400 px-4 py-2 rounded-lg hover:bg-primary-500/30 transition-colors"
                 >
@@ -342,21 +343,19 @@ const JobDetailsPage = () => {
             <div className="flex space-x-8 mb-6">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`pb-2 border-b-2 transition-colors ${
-                  activeTab === 'overview'
-                    ? 'border-primary-400 text-primary-400'
-                    : 'border-transparent text-gray-400 hover:text-white'
-                }`}
+                className={`pb-2 border-b-2 transition-colors ${activeTab === 'overview'
+                  ? 'border-primary-400 text-primary-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
+                  }`}
               >
                 Overview
               </button>
               <button
                 onClick={() => setActiveTab('company')}
-                className={`pb-2 border-b-2 transition-colors ${
-                  activeTab === 'company'
-                    ? 'border-primary-400 text-primary-400'
-                    : 'border-transparent text-gray-400 hover:text-white'
-                }`}
+                className={`pb-2 border-b-2 transition-colors ${activeTab === 'company'
+                  ? 'border-primary-400 text-primary-400'
+                  : 'border-transparent text-gray-400 hover:text-white'
+                  }`}
               >
                 Company
               </button>
@@ -401,7 +400,7 @@ const JobDetailsPage = () => {
                     </div>
                     <h3 className="text-xl font-semibold text-white">Qualifications</h3>
                   </div>
-                  
+
                   <div className="mb-6">
                     <p className="text-gray-300 mb-4">
                       Find out how your skills align with this job's requirements. If anything seems off, you can easily click on the tags to select or unselect skills to reflect your actual expertise.
@@ -411,11 +410,10 @@ const JobDetailsPage = () => {
                         <button
                           key={index}
                           onClick={() => handleSkillToggle(skill.name)}
-                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                            skill.hasSkill || selectedSkills.has(skill.name)
-                              ? 'border-green-500 bg-green-500/20 text-green-300'
-                              : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
-                          }`}
+                          className={`flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-all ${skill.hasSkill || selectedSkills.has(skill.name)
+                            ? 'border-green-500 bg-green-500/20 text-green-300'
+                            : 'border-gray-600 bg-gray-700/50 text-gray-300 hover:border-gray-500'
+                            }`}
                         >
                           <CheckCircle className="w-4 h-4" />
                           <span>{skill.name}</span>
@@ -469,7 +467,7 @@ const JobDetailsPage = () => {
               >
                 <h3 className="text-xl font-semibold text-white mb-4">About {job.company}</h3>
                 <p className="text-gray-300 leading-relaxed">
-                  {job.company} is a leading company in the legal technology space, dedicated to making legal services accessible to everyone. 
+                  {job.company} is a leading company in the legal technology space, dedicated to making legal services accessible to everyone.
                   They provide innovative solutions that help individuals and businesses navigate complex legal processes with confidence and clarity.
                 </p>
               </motion.div>
@@ -548,7 +546,7 @@ const JobDetailsPage = () => {
                     I'm working on getting the email contact information for Won Y. at {job.company}...
                   </p>
                 </div>
-                
+
                 <div className="p-3 bg-gray-700/50 rounded-lg">
                   <div className="flex items-center space-x-3 mb-2">
                     <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
@@ -589,7 +587,7 @@ const JobDetailsPage = () => {
         isOpen={isResumeModalOpen}
         onClose={() => setIsResumeModalOpen(false)}
         jobData={job}
-        userResume={null} // This would come from user's actual resume data
+        userResume={useResumeStore.getState().resume}
       />
     </div>
   )

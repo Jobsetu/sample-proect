@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from bytez import Bytez
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import json
 from pdfminer.high_level import extract_text
 from docx import Document as DocxDocument
@@ -107,7 +109,7 @@ def upload_resume():
                     "items": [
                         {{
                             "company": "Company Name",
-                            "role": "Job Title",
+                            "position": "Job Title",
                             "location": "City, State or null",
                             "startDate": "YYYY or Month YYYY",
                             "endDate": "YYYY or Month YYYY or Present",
@@ -245,17 +247,17 @@ def generate_resume():
         try:
             prompt_content = ""
             
-            if generation_mode == 'markdown':
-                # In markdown mode, we trust the input prompt from the frontend (which includes the full prompt)
+            if generation_mode == 'markdown' or generation_mode == 'custom':
+                # In markdown or custom mode, we trust the input prompt from the frontend
                 # But we should ensure we have the context if the frontend didn't fully bake it in, 
                 # though GeminiService.js seems to bake it in.
                 # Let's check if input is long enough to be a full prompt
-                if len(user_input) > 100:
+                if len(user_input) > 50: # Lowered threshold slightly
                     prompt_content = user_input
                 else:
                     # Fallback if input is short
                     prompt_content = f"""
-                    You are an expert resume writer. Create a tailored resume in Markdown format.
+                    You are an expert resume writer. Create a tailored resume.
                     
                     JOB DESCRIPTION:
                     {job_description}
@@ -266,7 +268,7 @@ def generate_resume():
                     INSTRUCTIONS:
                     {user_input}
                     
-                    Return a complete, professional resume in Markdown.
+                    Return the result as requested.
                     """
             else:
                 # Default JSON mode (for structural updates)
@@ -310,6 +312,7 @@ def generate_resume():
             ])
             
             # Extract text output
+            print(f"[RESUME] Raw AI response type: {type(response)}")
             if hasattr(response, 'output') and isinstance(response.output, dict):
                 text_output = response.output.get('content', '')
             elif isinstance(response, dict) and 'output' in response:
@@ -318,6 +321,9 @@ def generate_resume():
                 text_output = response.content
             else:
                 text_output = str(response)
+            
+            print(f"[RESUME] Extracted text output length: {len(text_output)}")
+            print(f"[RESUME] Extracted text preview: {text_output[:500]}")
             
             # Clean up the output - remove any markdown code blocks if present
             if text_output:
@@ -334,41 +340,54 @@ def generate_resume():
                     text_output = '\n'.join(lines).strip()
             
             # Sanitize generated JSON
+            is_valid_json = False
             try:
-                gen_json = json.loads(text_output)
+                # Robust JSON extraction
+                json_start = text_output.find('{')
+                json_end = text_output.rfind('}')
                 
-                def sanitize_skills_list(items):
-                    clean_items = []
-                    if isinstance(items, list):
-                        for item in items:
-                            if isinstance(item, str):
-                                clean_items.append(item)
-                            elif isinstance(item, dict):
-                                for key, val in item.items():
-                                    if isinstance(val, str):
-                                        clean_items.append(val)
-                                    elif isinstance(val, list):
-                                        clean_items.extend(sanitize_skills_list(val))
-                                    elif isinstance(val, dict):
-                                        clean_items.extend(sanitize_skills_list([val]))
-                            elif isinstance(item, list):
-                                clean_items.extend(sanitize_skills_list(item))
-                            else:
-                                if item is not None:
-                                    clean_items.append(str(item))
-                    return clean_items
+                if json_start != -1 and json_end != -1:
+                    potential_json = text_output[json_start:json_end+1]
+                    gen_json = json.loads(potential_json)
+                    
+                    # Use the extracted JSON as the text output
+                    # But first sanitize
+                    def sanitize_skills_list(items):
+                        clean_items = []
+                        if isinstance(items, list):
+                            for item in items:
+                                if isinstance(item, str):
+                                    clean_items.append(item)
+                                elif isinstance(item, dict):
+                                    for key, val in item.items():
+                                        if isinstance(val, str):
+                                            clean_items.append(val)
+                                        elif isinstance(val, list):
+                                            clean_items.extend(sanitize_skills_list(val))
+                                        elif isinstance(val, dict):
+                                            clean_items.extend(sanitize_skills_list([val]))
+                                elif isinstance(item, list):
+                                    clean_items.extend(sanitize_skills_list(item))
+                                else:
+                                    if item is not None:
+                                        clean_items.append(str(item))
+                        return clean_items
 
-                if 'sections' in gen_json:
-                    for section in gen_json['sections']:
-                        if section.get('id') == 'skills' and 'items' in section:
-                            original_items = section['items']
-                            cleaned = sanitize_skills_list(original_items)
-                            print(f"[SANITIZER-GEN] Skills cleaned. Original count: {len(original_items)}, New count: {len(cleaned)}")
-                            section['items'] = cleaned
-                
-                text_output = json.dumps(gen_json)
+                    if 'sections' in gen_json:
+                        for section in gen_json['sections']:
+                            if section.get('id') == 'skills' and 'items' in section:
+                                original_items = section['items']
+                                cleaned = sanitize_skills_list(original_items)
+                                print(f"[SANITIZER-GEN] Skills cleaned. Original count: {len(original_items)}, New count: {len(cleaned)}")
+                                section['items'] = cleaned
+                    
+                    text_output = json.dumps(gen_json)
+                    is_valid_json = True
+                    print("[RESUME] JSON validation successful (robust extraction)")
+                else:
+                    print("[RESUME] No JSON object found in output")
             except Exception as e:
-                print(f"[RESUME] JSON sanitization failed: {e}")
+                print(f"[RESUME] JSON sanitization/validation failed: {e}")
 
             # Validate that it looks like a resume (starts with # or contains resume sections)
             # Also check if it's a guide/template (contains words like "template", "example", "here is")
@@ -380,13 +399,16 @@ def generate_resume():
                 
                 is_valid_resume = (
                     text_output and 
-                    len(text_output) > 200 and 
+                    len(text_output) > 50 and  # Lowered threshold for JSON updates
                     not is_guide and
-                    (text_output.strip().startswith('#') or 
+                    (is_valid_json or 
+                     text_output.strip().startswith('#') or 
                      'PROFESSIONAL SUMMARY' in text_output.upper() or
                      'EXPERIENCE' in text_output.upper() or
                      'EDUCATION' in text_output.upper())
                 )
+                
+                print(f"[RESUME] Validation: is_valid_json={is_valid_json}, is_guide={is_guide}, len={len(text_output)}")
                 
                 if is_valid_resume:
                     print(f"[RESUME] AI generation successful, output length: {len(text_output)}")

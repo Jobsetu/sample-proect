@@ -331,6 +331,9 @@ ${educationSection?.items?.[0]?.school || 'University of Technology'} | ${educat
         }
       }))
 
+      // CRITICAL: Update global store so Resume Builder sees it
+      setResume(parsedResume)
+
       // 6. Generate PDF URL for preview (optional, done in background)
       // Don't block on this - resume is already shown
       pdf(<ResumeDocument resume={parsedResume} template="stitch" />)
