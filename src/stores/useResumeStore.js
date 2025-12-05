@@ -112,7 +112,29 @@ export const useResumeStore = create(
     }),
     {
       name: 'resume-storage', // unique name
-      version: 1,
+      version: 2, // Bump version to trigger migration
+      migrate: (persistedState, version) => {
+        // Sanitize corrupted data from older versions
+        if (persistedState && persistedState.resume && persistedState.resume.sections) {
+          persistedState.resume.sections = persistedState.resume.sections.map(section => {
+            // Fix object content in summary (should be string)
+            if (section.content && typeof section.content === 'object') {
+              section.content = section.content.content || '';
+            }
+            // Fix object items in skills (should be strings)
+            if (section.id === 'skills' && Array.isArray(section.items)) {
+              section.items = section.items.map(item => {
+                if (typeof item === 'object' && item !== null) {
+                  return item.name || item.label || item.value || item.skill || '';
+                }
+                return item;
+              }).filter(Boolean);
+            }
+            return section;
+          });
+        }
+        return persistedState;
+      },
     }
   )
 )

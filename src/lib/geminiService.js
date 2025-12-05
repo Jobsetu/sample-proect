@@ -119,78 +119,92 @@ export class GeminiService {
   }
 
   static async generateCustomResume(jobDescription, userResume, selectedSections = [], selectedSkills = []) {
-    // STRATEGY: Surgical Update (Fragment-Based)
-    // We ask the AI ONLY for the content that needs to change.
-    // We then merge this into the existing resume structure.
+    // STRATEGY: FULL AI REWRITE
+    // Generate completely new, ATS-optimized content for ALL sections
+    // based on the job description and user's background
 
-    const hasExperience = userResume.sections.find(s => s.id === 'experience')?.items?.length > 0;
+    const hasExperience = userResume.sections?.find(s => s.id === 'experience')?.items?.length > 0;
+    const userName = userResume.personalInfo?.name || 'Professional';
 
-    const instructions = [];
-    const outputStructure = {};
+    // Always regenerate ALL key sections
+    const sectionsToGenerate = ['summary', 'skills', 'experience', 'projects', 'education'];
 
-    // 1. Summary
-    if (selectedSections.includes('summary')) {
-      instructions.push(`1. **Summary**: Write a new, powerful 3-4 sentence Professional Summary tailored to this job.`);
-      outputStructure.summary = "New summary text...";
+    const prompt = `You are an EXPERT ATS (Applicant Tracking System) resume writer. Your job is to COMPLETELY REWRITE this resume to maximize the candidate's chances of getting an interview.
+
+=== JOB DESCRIPTION ===
+${jobDescription}
+
+=== CANDIDATE'S BACKGROUND ===
+${JSON.stringify(userResume.sections, null, 2)}
+
+=== YOUR TASK ===
+Create a COMPLETELY NEW, ATS-OPTIMIZED resume. DO NOT just copy or rephrase the existing content. REWRITE everything to perfectly match this job.
+
+=== ATS OPTIMIZATION RULES ===
+1. **KEYWORDS**: Extract 10-15 key skills/technologies from the job description and weave them naturally into every section
+2. **STAR METHOD**: For each experience bullet, use: Situation → Task → Action → Result (with NUMBERS)
+3. **POWER VERBS**: Start each bullet with strong action verbs (Led, Developed, Increased, Reduced, Implemented, etc.)
+4. **QUANTIFY EVERYTHING**: Add specific metrics (%, $, time saved, users impacted, team size, etc.)
+5. **SKILLS MATCHING**: Generate skills that DIRECTLY match what the job description asks for
+
+=== REQUIRED OUTPUT FORMAT (JSON) ===
+Return ONLY valid JSON. No markdown, no explanations. Start with { and end with }
+
+{
+  "summary": "A powerful 3-4 sentence professional summary that highlights the candidate's fit for THIS SPECIFIC role. Mention key technologies and achievements.",
+  
+  "skills": ["Skill1", "Skill2", "Skill3", "..."],
+  
+  "experience": [
+    {
+      "company": "Exact company name from resume",
+      "role": "Optimized job title (can enhance slightly to match target role)",
+      "location": "City, State",
+      "startDate": "Mon YYYY",
+      "endDate": "Mon YYYY or Present",
+      "bullets": [
+        "STAR-method bullet point with specific metrics and job-relevant keywords",
+        "Another STAR bullet highlighting achievements relevant to target job",
+        "Third bullet demonstrating skills matching job requirements"
+      ]
     }
-
-    // 2. Skills
-    if (selectedSections.includes('skills')) {
-      instructions.push(`2. **Skills**: specific list of technical and soft skills relevant to the job.`);
-      outputStructure.skills = ["Skill 1", "Skill 2"];
+  ],
+  
+  "projects": [
+    {
+      "title": "Project Name (create relevant ones if none exist)",
+      "subtitle": "Technologies Used",
+      "description": "1-2 sentence description highlighting job-relevant aspects",
+      "technologies": ["Tech1", "Tech2"]
     }
-
-    // 3. Experience
-    if (selectedSections.includes('experience')) {
-      instructions.push(`3. **Experience**: ${hasExperience
-        ? 'For each job in the resume, provide 2-3 improved bullet points that highlight impact and relevance to the new job. Match the "company" name exactly.'
-        : 'Create 2 relevant professional experience entries that would make this candidate a strong fit for the job. Use realistic but generic company names and dates.'}`);
-      outputStructure.experience = [{ "company": "Company Name", "role": "Job Title", "location": "City, State", "startDate": "YYYY", "endDate": "YYYY", "bullets": ["Bullet 1", "Bullet 2"] }];
+  ],
+  
+  "education": [
+    {
+      "degree": "Degree Name",
+      "school": "Institution Name",
+      "location": "City, State",
+      "year": "Year",
+      "gpa": "GPA if good (3.5+), otherwise omit"
     }
+  ]
+}
 
-    // 4. Projects
-    if (selectedSections.includes('projects')) {
-      instructions.push(`4. **Projects**: Generate 2-3 relevant side projects or academic projects that demonstrate skills required for this job.`);
-      outputStructure.projects = [{ "title": "Project Title", "subtitle": "Technologies Used", "description": "Brief description", "technologies": ["Tech 1"] }];
-    }
+=== CRITICAL RULES ===
+- Skills array must have 10-15 items DIRECTLY from job requirements
+- Each experience entry MUST have 3-4 bullet points with NUMBERS
+- Projects should demonstrate skills mentioned in job description
+- DO NOT copy existing bullets - REWRITE with metrics and keywords
+- Summary should mention the target role/company context
 
-    // 5. Education
-    if (selectedSections.includes('education')) {
-      instructions.push(`5. **Education**: Optimize the education section. Keep the degree and university, but you may add relevant coursework or honors if implied by the job description.`);
-      outputStructure.education = { "degree": "Degree", "university": "University", "year": "Year", "gpa": "GPA" };
-    }
-
-    // 6. Activities/Certifications
-    if (selectedSections.includes('activities')) {
-      instructions.push(`6. **Activities**: List relevant activities or certifications.`);
-      outputStructure.activities = ["Activity 1", "Certification 1"];
-    }
-
-    const prompt = `
-      You are an expert resume writer. I need you to update specific sections of a candidate's resume to better match a job description.
-
-      JOB DESCRIPTION:
-      ${jobDescription}
-
-      CANDIDATE'S EXPERIENCE & SKILLS:
-      ${JSON.stringify(userResume.sections)}
-
-      INSTRUCTIONS:
-      ${instructions.join('\n')}
-
-      OUTPUT FORMAT:
-      Return ONLY a valid JSON object with the requested keys.
-      DO NOT include any conversational text, markdown formatting (like \`\`\`json), or explanations.
-      START your response with { and END with }.
-        ${JSON.stringify(outputStructure, null, 2)}
-    `;
+GENERATE THE JSON NOW:`;
 
     try {
-      console.log('Sending surgical update prompt to backend...');
+      console.log('[AI Resume] Sending full rewrite prompt to backend...');
       const response = await this.callBackend('generate-resume', {
         input: prompt,
         mode: 'custom',
-        resume: userResume // Also pass resume for logging/fallback purposes
+        resume: userResume
       });
 
       let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
@@ -209,55 +223,70 @@ export class GeminiService {
       // MERGE LOGIC
       const newResume = JSON.parse(JSON.stringify(userResume)); // Deep copy
 
-      // 1. Update Summary
+      // Helper to extract string content from potentially nested object
+      const extractContent = (value) => {
+        if (typeof value === 'string') return value;
+        if (typeof value === 'object' && value !== null) {
+          return value.content || value.text || value.summary || JSON.stringify(value);
+        }
+        return String(value || '');
+      };
+
+      // 1. Update Summary - SANITIZE nested object!
       if (updates.summary) {
+        let summaryContent = extractContent(updates.summary);
+        // Handle double-nested case: {title, content: {title, content}}
+        if (typeof updates.summary === 'object' && updates.summary.content) {
+          summaryContent = extractContent(updates.summary.content);
+        }
+
         const summarySection = newResume.sections.find(s => s.id === 'summary');
         if (summarySection) {
-          summarySection.content = updates.summary;
+          summarySection.content = summaryContent;
         } else {
           // Add if missing
-          newResume.sections.unshift({ id: 'summary', title: 'Professional Summary', content: updates.summary });
+          newResume.sections.unshift({ id: 'summary', title: 'Professional Summary', content: summaryContent });
         }
       }
 
-      // 2. Update Skills
+      // 2. Update Skills - SANITIZE each skill item and CREATE section if missing!
       if (updates.skills && Array.isArray(updates.skills)) {
-        const skillsSection = newResume.sections.find(s => s.id === 'skills');
-        if (skillsSection) {
-          skillsSection.items = updates.skills;
+        let skillsSection = newResume.sections.find(s => s.id === 'skills');
+        if (!skillsSection) {
+          skillsSection = { id: 'skills', title: 'Skills', items: [] };
+          newResume.sections.push(skillsSection);
         }
+
+        skillsSection.items = updates.skills.map(skill => {
+          if (typeof skill === 'object' && skill !== null) {
+            return skill.name || skill.label || skill.skill || skill.value || String(skill);
+          }
+          return String(skill);
+        }).filter(Boolean);
+
+        console.log('[AI Resume] Generated', skillsSection.items.length, 'job-matched skills');
       }
 
-      // 3. Update Experience
+      // 3. Update Experience - ALWAYS replace with AI-generated content
       if (updates.experience && Array.isArray(updates.experience)) {
-        const expSection = newResume.sections.find(s => s.id === 'experience');
-        if (expSection) {
-          if (expSection.items.length === 0) {
-            // If original was empty, add the generated ones
-            expSection.items = updates.experience.map(item => ({
-              id: 'exp-' + Math.random().toString(36).substr(2, 9),
-              role: item.role || 'Professional',
-              company: item.company || 'Company',
-              location: item.location || 'Remote',
-              startDate: item.startDate || '2020',
-              endDate: item.endDate || 'Present',
-              bullets: item.bullets || []
-            }));
-          } else {
-            // Update existing
-            updates.experience.forEach(updateItem => {
-              // Fuzzy match company name or exact match
-              const originalItem = expSection.items.find(item =>
-                item.company.toLowerCase().includes(updateItem.company.toLowerCase()) ||
-                updateItem.company.toLowerCase().includes(item.company.toLowerCase())
-              );
-
-              if (originalItem && updateItem.bullets && Array.isArray(updateItem.bullets)) {
-                originalItem.bullets = updateItem.bullets;
-              }
-            });
-          }
+        let expSection = newResume.sections.find(s => s.id === 'experience');
+        if (!expSection) {
+          expSection = { id: 'experience', title: 'Professional Experience', items: [] };
+          newResume.sections.push(expSection);
         }
+
+        // COMPLETELY REPLACE with AI-generated experience
+        expSection.items = updates.experience.map((item, index) => ({
+          id: 'exp-' + Math.random().toString(36).substr(2, 9),
+          role: item.role || item.title || 'Professional',
+          company: item.company || 'Company',
+          location: item.location || '',
+          startDate: item.startDate || '',
+          endDate: item.endDate || 'Present',
+          bullets: Array.isArray(item.bullets) ? item.bullets : []
+        }));
+
+        console.log('[AI Resume] Replaced experience with', expSection.items.length, 'AI-generated entries');
       }
 
       // 4. Update Projects
@@ -475,8 +504,9 @@ CRITICAL TRANSFORMATION RULES - READ CAREFULLY:
    - Examples: "40% reduction", "500K+ users", "$2M cost savings", "15-person team"
    - If candidate didn't provide metrics, create reasonable professional estimates
 
-6. **Language Transformation**:
-   - Start EVERY bullet with power verbs: Led, Architected, Drove, Spearheaded, Delivered, Optimized, etc.
+8. **Language Transformation (ATS Friendly)**:
+   - Start EVERY bullet with strong power verbs: Led, Architected, Drove, Spearheaded, Delivered, Optimized
+   - Use the **STAR Method** (Situation, Task, Action, Result) structure implicitly
    - Write in past tense for previous roles, present tense for current role
    - Be specific and concrete - avoid vague terms like "worked on" or "helped with"
 
@@ -712,6 +742,84 @@ CRITICAL: Output ONLY the resume markdown. Start immediately with "# ${name}". N
             if (bullets.length > 0) item.bullets = bullets;
           }
         });
+      }
+    }
+
+    // 4. Projects (New Parsing Logic)
+    const projectsText = extractSection('Projects') || extractSection('Projects & Certifications');
+    if (projectsText) {
+      let projectsSection = resume.sections.find(s => s.id === 'projects');
+      if (!projectsSection) {
+        projectsSection = { id: 'projects', title: 'Projects', items: [] };
+        resume.sections.push(projectsSection);
+      }
+
+      const projects = [];
+      const lines = projectsText.split('\n');
+      let currentProject = null;
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('---')) continue;
+
+        if (trimmed.startsWith('**')) {
+          if (currentProject) projects.push(currentProject);
+          // Parse "**Project Name** | Tech"
+          const parts = trimmed.split('|');
+          const title = parts[0].replace(/\*\*/g, '').trim();
+          const techString = parts[1] ? parts[1].trim() : '';
+          const technologies = techString ? techString.split(',').map(t => t.trim()) : [];
+
+          currentProject = {
+            title,
+            subtitle: techString, // Store tech in subtitle for display
+            technologies,
+            description: '',
+            bullets: []
+          };
+        } else if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
+          if (currentProject) {
+            const bullet = trimmed.replace(/^[-•*]\s*/, '').trim();
+            currentProject.bullets.push(bullet);
+            // Use first bullet as description if empty
+            if (!currentProject.description) currentProject.description = bullet;
+          }
+        }
+      }
+      if (currentProject) projects.push(currentProject);
+
+      if (projects.length > 0) {
+        projectsSection.items = projects;
+      }
+    }
+
+    // 5. Education (New Parsing Logic)
+    const educationText = extractSection('Education');
+    if (educationText) {
+      const eduSection = resume.sections.find(s => s.id === 'education');
+      if (eduSection) {
+        const educations = [];
+        const lines = educationText.split('\n');
+
+        // Simple parser for "**Degree** | **School** | Year" format
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed.startsWith('**') && trimmed.includes('|')) {
+            const parts = trimmed.split('|');
+            if (parts.length >= 2) {
+              educations.push({
+                degree: parts[0].replace(/\*\*/g, '').trim(),
+                school: parts[1].replace(/\*\*/g, '').trim(),
+                year: parts[2] ? parts[2].trim() : '',
+                id: `edu-${Date.now()}-${Math.random()}`
+              });
+            }
+          }
+        }
+
+        if (educations.length > 0) {
+          eduSection.items = educations;
+        }
       }
     }
 

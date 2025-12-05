@@ -342,6 +342,12 @@ def generate_resume():
             
             # Sanitize generated JSON ONLY if not in markdown mode
             is_valid_json = False
+            
+            # Auto-detect markdown if mode is custom but output looks like markdown
+            if generation_mode != 'markdown' and (text_output.strip().startswith('#') or '## ' in text_output):
+                print(f"[RESUME] Auto-detected markdown content in {generation_mode} mode")
+                generation_mode = 'markdown'
+
             if generation_mode != 'markdown':
                 try:
                     # Robust JSON extraction

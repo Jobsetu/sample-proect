@@ -249,8 +249,32 @@ const EditorPanel = () => {
   // Add Section State
   const [showAddSection, setShowAddSection] = useState(false)
 
+  // Sanitize resume data to ensure content is string (prevents React Error #31)
+  const sanitizedResume = useMemo(() => {
+    if (!resume) return null;
+    const clean = JSON.parse(JSON.stringify(resume));
+    if (clean.sections) {
+      clean.sections.forEach(section => {
+        // Fix object content in Summary
+        if (section.content && typeof section.content === 'object') {
+          section.content = section.content.content || '';
+        }
+        // Fix object items in Skills
+        if (section.id === 'skills' && Array.isArray(section.items)) {
+          section.items = section.items.map(item => {
+            if (typeof item === 'object' && item !== null) {
+              return item.name || item.label || item.value || '';
+            }
+            return item;
+          });
+        }
+      });
+    }
+    return clean;
+  }, [resume]);
+
   const methods = useForm({
-    defaultValues: resume || {
+    defaultValues: sanitizedResume || {
       personalInfo: {},
       sections: [],
       font: 'Inter',
@@ -288,13 +312,14 @@ const EditorPanel = () => {
 
   // Enforce Summary at Top on Load/Change
   useEffect(() => {
-    const summaryIndex = resume.sections.findIndex(s => s.id === 'summary')
+    if (!sanitizedResume) return;
+    const summaryIndex = sanitizedResume.sections.findIndex(s => s.id === 'summary')
     if (summaryIndex > 0) {
-      const newSections = [...resume.sections]
+      const newSections = [...sanitizedResume.sections]
       const [summary] = newSections.splice(summaryIndex, 1)
       newSections.unshift(summary)
-      setResume({ ...resume, sections: newSections })
-      reset({ ...resume, sections: newSections })
+      setResume({ ...sanitizedResume, sections: newSections })
+      reset({ ...sanitizedResume, sections: newSections })
     }
   }, []) // Run once on mount to fix order if needed
 

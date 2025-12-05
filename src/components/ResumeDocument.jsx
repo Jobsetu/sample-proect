@@ -254,9 +254,10 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
 
                         <View>
                             <Text style={styles.sectionTitle}>Skills</Text>
-                            {getSection('skills').items?.map((skill, i) => (
-                                <Text key={i} style={styles.text}>• {skill}</Text>
-                            ))}
+                            {getSection('skills').items?.map((skill, i) => {
+                                const skillName = typeof skill === 'object' && skill !== null ? (skill.name || skill.label || skill.value || skill.skill || '') : skill;
+                                return <Text key={i} style={styles.text}>• {skillName}</Text>
+                            })}
                         </View>
                     </View>
 
@@ -311,7 +312,11 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                             )}
 
                             {section.id === 'skills' && (
-                                <Text>{Array.isArray(section.items) ? section.items.join(' • ') : ''}</Text>
+                                <Text>
+                                    {Array.isArray(section.items)
+                                        ? section.items.map(item => (typeof item === 'object' && item !== null ? (item.name || item.label || item.value || item.skill || '') : item)).filter(Boolean).join(' • ')
+                                        : ''}
+                                </Text>
                             )}
 
                             {section.id === 'experience' && section.items?.map((item, i) => (
@@ -364,7 +369,11 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                         return (
                             <View key={section.id} style={styles.section}>
                                 <Text style={styles.sectionTitle}>{section.title}</Text>
-                                <Text>{Array.isArray(section.items) ? section.items.join(' • ') : ''}</Text>
+                                <Text>
+                                    {Array.isArray(section.items)
+                                        ? section.items.map(item => (typeof item === 'object' && item !== null ? (item.name || item.label || item.value || item.skill || '') : item)).filter(Boolean).join(' • ')
+                                        : ''}
+                                </Text>
                             </View>
                         )
                     }
