@@ -77,6 +77,8 @@ const stitchStyles = StyleSheet.create({
 })
 
 const ResumeDocument = ({ resume, template = 'stitch' }) => {
+    console.log('[ResumeDocument] Rendering with resume:', resume?.sections?.length, 'sections');
+
     const styles = {
         modern: modernStyles,
         clean: cleanStyles,
@@ -84,6 +86,15 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
         classic: classicStyles,
         stitch: stitchStyles
     }[template] || stitchStyles
+
+    // Safety check
+    if (!resume) return (
+        <Document>
+            <Page size="A4" style={styles.page}>
+                <Text>No resume data available</Text>
+            </Page>
+        </Document>
+    )
 
     // Helper for contact info array
     const contactInfo = [
@@ -175,14 +186,30 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                                 <View key={section.id} style={styles.section}>
                                     <Text style={styles.sectionTitle}>{section.title}</Text>
                                     {section.items.map((item, i) => (
-                                        <View key={i} style={{ marginBottom: 6 }}>
-                                            <Text style={styles.entryTitle}>{item.title}</Text>
-                                            <Text style={{ fontSize: 10.5, marginBottom: 2 }}>{item.description}</Text>
-                                            {item.technologies && (
-                                                <Text style={{ fontSize: 10.5, fontStyle: 'italic' }}>
+                                        <View key={i} style={{ marginBottom: 8 }}>
+                                            <View style={styles.entryHeader}>
+                                                <Text style={styles.entryTitle}>{item.title}</Text>
+                                            </View>
+                                            {item.subtitle && (
+                                                <Text style={{ fontSize: 10.5, fontStyle: 'italic', marginBottom: 2 }}>
+                                                    {item.subtitle}
+                                                </Text>
+                                            )}
+                                            {item.technologies && item.technologies.length > 0 && (
+                                                <Text style={{ fontSize: 10.5, fontStyle: 'italic', marginBottom: 2 }}>
                                                     Technologies: {item.technologies.join(', ')}
                                                 </Text>
                                             )}
+                                            {item.description && (
+                                                <Text style={{ fontSize: 10.5, marginBottom: 2 }}>{item.description}</Text>
+                                            )}
+                                            {/* Render project bullets - CRITICAL FIX */}
+                                            {item.bullets?.map((b, j) => (
+                                                <View key={j} style={{ flexDirection: 'row' }}>
+                                                    <Text style={{ fontSize: 10.5, marginRight: 5 }}>•</Text>
+                                                    <Text style={{ fontSize: 10.5, flex: 1, lineHeight: 1.3 }}>{b}</Text>
+                                                </View>
+                                            ))}
                                         </View>
                                     ))}
                                 </View>
@@ -191,7 +218,19 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
 
                         // Skills
                         if (type.includes('skills') || section.id === 'skills') {
-                            return section.items ? (
+                            console.log('[ResumeDocument] Skills section found:', section);
+                            console.log('[ResumeDocument] Skills items:', section.items);
+
+                            if (!section.items || (Array.isArray(section.items) && section.items.length === 0)) {
+                                return (
+                                    <View key={section.id} style={styles.section}>
+                                        <Text style={styles.sectionTitle}>{section.title || 'Skills'}</Text>
+                                        <Text style={{ fontSize: 10.5, fontStyle: 'italic' }}>No skills added yet</Text>
+                                    </View>
+                                )
+                            }
+
+                            return (
                                 <View key={section.id} style={styles.section}>
                                     <Text style={styles.sectionTitle}>{section.title}</Text>
                                     <Text style={{ fontSize: 10.5, lineHeight: 1.4 }}>
@@ -205,7 +244,7 @@ const ResumeDocument = ({ resume, template = 'stitch' }) => {
                                             : section.items}
                                     </Text>
                                 </View>
-                            ) : null
+                            )
                         }
 
                         // Generic / Custom

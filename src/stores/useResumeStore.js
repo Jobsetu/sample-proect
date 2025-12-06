@@ -95,7 +95,10 @@ export const useResumeStore = create(
           return { resume: draft }
         })
       },
-      setResume: (data) => set({ resume: data }),
+      setResume: (data) => {
+        console.log('[ResumeStore] setResume called with:', data?.sections?.length, 'sections');
+        set({ resume: data })
+      },
       resetResume: () => set({ resume: defaultState }),
       addSection: (section) => set(state => ({ resume: { ...state.resume, sections: [...state.resume.sections, section] } })),
       removeSection: (sectionId) => set(state => ({ resume: { ...state.resume, sections: state.resume.sections.filter(s => s.id !== sectionId) } })),

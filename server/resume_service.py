@@ -324,14 +324,37 @@ class ResumeService:
             md_lines.append("## TECHNICAL PROJECTS")
             md_lines.append("")
             
-            for project in projects[:2]:
+            for project in projects[:3]:  # Allow up to 3 projects
                 title = project.get('title', 'Technical Project')
                 description = project.get('description', 'Developed comprehensive technical solution')
                 technologies = project.get('technologies', [])
+                bullets = project.get('bullets', [])
                 
                 tech_str = ', '.join(technologies) if technologies else 'Various Technologies'
                 md_lines.append(f"**{title}** | {tech_str}")
-                md_lines.append(f"- {description}")
+                md_lines.append("")
+                
+                # Use existing bullets or generate default ones
+                if bullets and len(bullets) >= 3:
+                    for bullet in bullets[:5]:  # Max 5 bullets
+                        md_lines.append(f"- {bullet}")
+                else:
+                    # Generate 5 detailed bullet points for the project
+                    default_bullets = [
+                        f"Built {title} that addresses key business requirements, resulting in improved efficiency and user satisfaction",
+                        f"Implemented using {tech_str} with focus on scalability, performance optimization, and clean code architecture",
+                        f"Overcame technical challenges through innovative problem-solving and iterative development approaches",
+                        f"Achieved measurable improvements in system performance and user experience metrics",
+                        f"Demonstrated proficiency in full-stack development, testing methodologies, and agile practices"
+                    ]
+                    if description:
+                        md_lines.append(f"- {description}")
+                        for bullet in default_bullets[1:4]:  # Add 3 more bullets
+                            md_lines.append(f"- {bullet}")
+                    else:
+                        for bullet in default_bullets[:5]:
+                            md_lines.append(f"- {bullet}")
+                
                 md_lines.append("")
             
             md_lines.append("---")

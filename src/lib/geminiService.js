@@ -140,12 +140,28 @@ ${JSON.stringify(userResume.sections, null, 2)}
 === YOUR TASK ===
 Create a COMPLETELY NEW, ATS-OPTIMIZED resume. DO NOT just copy or rephrase the existing content. REWRITE everything to perfectly match this job.
 
+=== SKILLS EXTRACTION (CRITICAL) ===
+**YOU MUST GENERATE SKILLS.** Analyze the job description and extract:
+1. ALL technical skills mentioned (programming languages, frameworks, tools)
+2. ALL soft skills mentioned (leadership, communication, problem-solving)
+3. Industry-specific keywords and technologies
+4. Combine with relevant skills from candidate's background
+
+Skills MUST be a flat array of 10-15 strings. Example: ["Python", "JavaScript", "React", "AWS", "Docker", "SQL", "Leadership", "Agile", "CI/CD", "REST APIs"]
+
+=== PROJECTS (CRITICAL - 3-5 BULLETS EACH) ===
+Generate 2-3 projects. EACH project MUST have EXACTLY 3-5 bullet points:
+- Bullet 1: What you built and the problem it solved (with metrics if possible)
+- Bullet 2: Technical implementation details and technologies used
+- Bullet 3: Key challenges overcome and solutions implemented
+- Bullet 4: Measurable results and impact (users, performance, cost savings)
+- Bullet 5: Skills/technologies demonstrated matching job requirements
+
 === ATS OPTIMIZATION RULES ===
 1. **KEYWORDS**: Extract 10-15 key skills/technologies from the job description and weave them naturally into every section
 2. **STAR METHOD**: For each experience bullet, use: Situation → Task → Action → Result (with NUMBERS)
 3. **POWER VERBS**: Start each bullet with strong action verbs (Led, Developed, Increased, Reduced, Implemented, etc.)
 4. **QUANTIFY EVERYTHING**: Add specific metrics (%, $, time saved, users impacted, team size, etc.)
-5. **SKILLS MATCHING**: Generate skills that DIRECTLY match what the job description asks for
 
 === REQUIRED OUTPUT FORMAT (JSON) ===
 Return ONLY valid JSON. No markdown, no explanations. Start with { and end with }
@@ -153,7 +169,7 @@ Return ONLY valid JSON. No markdown, no explanations. Start with { and end with 
 {
   "summary": "A powerful 3-4 sentence professional summary that highlights the candidate's fit for THIS SPECIFIC role. Mention key technologies and achievements.",
   
-  "skills": ["Skill1", "Skill2", "Skill3", "..."],
+  "skills": ["Python", "JavaScript", "React", "Node.js", "AWS", "Docker", "SQL", "Git", "CI/CD", "REST APIs", "Agile", "Leadership"],
   
   "experience": [
     {
@@ -165,17 +181,36 @@ Return ONLY valid JSON. No markdown, no explanations. Start with { and end with 
       "bullets": [
         "STAR-method bullet point with specific metrics and job-relevant keywords",
         "Another STAR bullet highlighting achievements relevant to target job",
-        "Third bullet demonstrating skills matching job requirements"
+        "Third bullet demonstrating skills matching job requirements",
+        "Fourth bullet with measurable business impact"
       ]
     }
   ],
   
   "projects": [
     {
-      "title": "Project Name (create relevant ones if none exist)",
+      "title": "Project Name",
+      "subtitle": "Technologies Used (e.g., React, Node.js, AWS)",
+      "description": "Brief 1-line project overview",
+      "bullets": [
+        "Built [specific feature/system] that solved [problem], resulting in [metric] improvement",
+        "Implemented [technology stack] with [specific technical details] for [purpose]",
+        "Overcame [challenge] by developing [solution] using [technologies]",
+        "Achieved [measurable result] impacting [number] users/reducing costs by [amount]",
+        "Demonstrated proficiency in [skills from job description] through [specific implementation]"
+      ]
+    },
+    {
+      "title": "Second Project Name",
       "subtitle": "Technologies Used",
-      "description": "1-2 sentence description highlighting job-relevant aspects",
-      "technologies": ["Tech1", "Tech2"]
+      "description": "Brief project overview",
+      "bullets": [
+        "Developed [feature] addressing [business need] with [technology]",
+        "Architected [system/component] using [frameworks/tools]",
+        "Resolved [technical challenge] improving [metric] by [percentage]",
+        "Delivered [outcome] for [stakeholders/users]",
+        "Applied [job-relevant skills] in [practical context]"
+      ]
     }
   ],
   
@@ -191,11 +226,13 @@ Return ONLY valid JSON. No markdown, no explanations. Start with { and end with 
 }
 
 === CRITICAL RULES ===
-- Skills array must have 10-15 items DIRECTLY from job requirements
+- Skills array MUST have 10-15 items - extract from job description + candidate background
+- Skills MUST be simple strings, NOT objects
+- Each project MUST have EXACTLY 3-5 bullet points - this is REQUIRED
 - Each experience entry MUST have 3-4 bullet points with NUMBERS
-- Projects should demonstrate skills mentioned in job description
 - DO NOT copy existing bullets - REWRITE with metrics and keywords
 - Summary should mention the target role/company context
+- If job description lacks specific skills, infer common skills for that role type
 
 GENERATE THE JSON NOW:`;
 
@@ -206,22 +243,51 @@ GENERATE THE JSON NOW:`;
         mode: 'custom',
         resume: userResume
       });
+      // Backend returns {output: jsonString, source: "ai"}
+      // callBackend already extracts .output, so response should be the JSON string
+      console.log('[AI Resume] Raw response type:', typeof response);
+      console.log('[AI Resume] Raw response preview:', typeof response === 'string' ? response.substring(0, 200) : JSON.stringify(response).substring(0, 200));
 
-      let text = typeof response === 'object' ? (response.content || JSON.stringify(response)) : response;
-      console.log('Processed text for parsing:', text);
+      let text = response;
+      if (typeof response === 'object' && response !== null) {
+        // Handle various possible formats
+        text = response.output || response.content || response.text || JSON.stringify(response);
+      }
+      console.log('[AI Resume] Extracted text preview:', text.substring(0, 300));
 
       let updates;
       try {
         updates = this.parseAIResponse(text);
-        console.log('Parsed updates:', updates);
+        console.log('[AI Resume] Parsed updates keys:', Object.keys(updates));
+
+        // KEY NORMALIZATION: Handle AI variations
+        if (!updates.skills) {
+          const skillKey = Object.keys(updates).find(k =>
+            k.toLowerCase() === 'skills' ||
+            k.toLowerCase().includes('technical') ||
+            k.toLowerCase().includes('competencies') ||
+            k.toLowerCase().includes('technologies')
+          );
+          if (skillKey && Array.isArray(updates[skillKey])) {
+            console.log(`[AI Resume] Found skills in alternate key: ${skillKey}`);
+            updates.skills = updates[skillKey];
+          }
+        }
       } catch (parseError) {
         console.warn("AI response parsing failed, using text fallback:", parseError);
-        // Fallback: If JSON fails, treat the whole text as a summary
         updates = { summary: text.substring(0, 500) + "..." };
       }
 
       // MERGE LOGIC
       const newResume = JSON.parse(JSON.stringify(userResume)); // Deep copy
+
+      // DEFENSIVE: Ensure sections array exists
+      if (!newResume.sections || !Array.isArray(newResume.sections)) {
+        console.log('[AI Resume] Initializing empty sections array');
+        newResume.sections = [];
+      }
+
+      console.log('[AI Resume] Starting merge. Current sections:', newResume.sections.map(s => s.id));
 
       // Helper to extract string content from potentially nested object
       const extractContent = (value) => {
@@ -249,22 +315,86 @@ GENERATE THE JSON NOW:`;
         }
       }
 
-      // 2. Update Skills - SANITIZE each skill item and CREATE section if missing!
-      if (updates.skills && Array.isArray(updates.skills)) {
-        let skillsSection = newResume.sections.find(s => s.id === 'skills');
-        if (!skillsSection) {
-          skillsSection = { id: 'skills', title: 'Skills', items: [] };
-          newResume.sections.push(skillsSection);
+      // 2. Update Skills - Handle multiple AI response formats
+      console.log('[AI Resume] === SKILLS DEBUG START ===');
+      console.log('[AI Resume] updates object keys:', Object.keys(updates));
+      console.log('[AI Resume] updates.skills:', updates.skills);
+      console.log('[AI Resume] updates.skills type:', typeof updates.skills);
+      console.log('[AI Resume] updates.skills isArray:', Array.isArray(updates.skills));
+
+      // Extract skills array from various possible formats
+      let skillsArray = [];
+      if (Array.isArray(updates.skills)) {
+        skillsArray = updates.skills;
+        console.log('[AI Resume] Got skills from updates.skills array:', skillsArray.length, 'items');
+      } else if (updates.skills && typeof updates.skills === 'object') {
+        // Handle {items: [...]} or {skills: [...]} format
+        skillsArray = updates.skills.items || updates.skills.skills || Object.values(updates.skills).flat();
+        console.log('[AI Resume] Got skills from nested object:', skillsArray.length, 'items');
+      }
+
+      console.log('[AI Resume] Final skillsArray:', skillsArray.slice(0, 5), '... total:', skillsArray.length);
+
+      // FALLBACK: If no skills from AI, extract from job description
+      if (skillsArray.length === 0) {
+        console.log('[AI Resume] No skills from AI, extracting from job description...');
+        const commonTechSkills = [
+          'Python', 'JavaScript', 'TypeScript', 'Java', 'C++', 'Go', 'Rust', 'Ruby', 'PHP', 'Swift', 'Kotlin',
+          'React', 'Angular', 'Vue', 'Node.js', 'Express', 'Django', 'Flask', 'Spring', 'Next.js',
+          'AWS', 'Azure', 'GCP', 'Docker', 'Kubernetes', 'Jenkins', 'CI/CD', 'Terraform',
+          'SQL', 'MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Elasticsearch', 'GraphQL',
+          'Machine Learning', 'AI', 'Deep Learning', 'TensorFlow', 'PyTorch', 'NLP',
+          'Agile', 'Scrum', 'DevOps', 'Microservices', 'REST', 'API', 'Git', 'Linux'
+        ];
+
+        const jobDescLower = jobDescription.toLowerCase();
+        const extractedSkills = commonTechSkills.filter(skill =>
+          jobDescLower.includes(skill.toLowerCase())
+        );
+
+        // Add some default skills if still empty
+        if (extractedSkills.length < 5) {
+          const defaultSkills = ['JavaScript', 'Python', 'React', 'Node.js', 'SQL', 'AWS', 'Docker', 'Git', 'REST APIs', 'Agile'];
+          extractedSkills.push(...defaultSkills.filter(s => !extractedSkills.includes(s)).slice(0, 10 - extractedSkills.length));
         }
 
-        skillsSection.items = updates.skills.map(skill => {
+        skillsArray = extractedSkills;
+        console.log('[AI Resume] Extracted skills from job description:', skillsArray);
+      }
+
+      if (skillsArray.length > 0) {
+        // Process skills first
+        const processedSkills = skillsArray.map(skill => {
+          if (typeof skill === 'string') return skill;
           if (typeof skill === 'object' && skill !== null) {
-            return skill.name || skill.label || skill.skill || skill.value || String(skill);
+            return skill.name || skill.label || skill.skill || skill.value || skill.title || String(skill);
           }
           return String(skill);
-        }).filter(Boolean);
+        }).filter(s => s && s.length > 0);
 
-        console.log('[AI Resume] Generated', skillsSection.items.length, 'job-matched skills');
+        console.log('[AI Resume] Processed skills:', processedSkills);
+
+        // Find or create skills section
+        let skillsSectionIndex = newResume.sections.findIndex(s => s.id === 'skills');
+
+        if (skillsSectionIndex === -1) {
+          // Create and insert skills section after summary
+          const summaryIndex = newResume.sections.findIndex(s => s.id === 'summary');
+          const newSkillsSection = { id: 'skills', title: 'Skills', items: processedSkills };
+
+          if (summaryIndex >= 0) {
+            newResume.sections.splice(summaryIndex + 1, 0, newSkillsSection);
+          } else {
+            newResume.sections.unshift(newSkillsSection);
+          }
+          console.log('[AI Resume] Created new Skills section with', processedSkills.length, 'skills');
+        } else {
+          // Update existing section
+          newResume.sections[skillsSectionIndex].items = processedSkills;
+          console.log('[AI Resume] Updated existing Skills section with', processedSkills.length, 'skills');
+        }
+      } else {
+        console.warn('[AI Resume] No skills found in AI response');
       }
 
       // 3. Update Experience - ALWAYS replace with AI-generated content
@@ -289,32 +419,47 @@ GENERATE THE JSON NOW:`;
         console.log('[AI Resume] Replaced experience with', expSection.items.length, 'AI-generated entries');
       }
 
-      // 4. Update Projects
+      // 4. Update Projects - Ensure 3-5 bullets per project
       if (updates.projects && Array.isArray(updates.projects)) {
-        const projSection = newResume.sections.find(s => s.id === 'projects');
-        if (projSection) {
-          // Always replace/add projects as they are specific to the JD
-          projSection.items = updates.projects.map(item => ({
+        let projSection = newResume.sections.find(s => s.id === 'projects');
+        if (!projSection) {
+          projSection = { id: 'projects', title: 'Projects', items: [] };
+          newResume.sections.push(projSection);
+        }
+
+        // Always replace/add projects as they are specific to the JD
+        projSection.items = updates.projects.map(item => {
+          let bullets = Array.isArray(item.bullets) ? item.bullets : [];
+          const title = item.title || 'Project';
+          const tech = item.subtitle || item.technologies?.join(', ') || 'Various Technologies';
+
+          // Ensure at least 3 bullets per project
+          if (bullets.length < 3) {
+            const defaultBullets = [
+              `Built ${title} to address key business needs, resulting in improved efficiency and user satisfaction`,
+              `Implemented using ${tech} with focus on scalability, clean architecture, and best practices`,
+              `Overcame technical challenges through innovative problem-solving and iterative development`,
+              `Achieved measurable improvements in performance metrics and overall system reliability`,
+              `Demonstrated proficiency in full-stack development, testing, and agile methodologies`
+            ];
+            // Add missing bullets
+            while (bullets.length < 3) {
+              bullets.push(defaultBullets[bullets.length]);
+            }
+            console.log(`[AI Resume] Added fallback bullets to project "${title}", now has ${bullets.length} bullets`);
+          }
+
+          return {
             id: 'proj-' + Math.random().toString(36).substr(2, 9),
-            title: item.title || 'Project',
+            title: title,
             subtitle: item.subtitle || 'Technologies',
             description: item.description || '',
+            bullets: bullets.slice(0, 5), // Cap at 5 bullets
             technologies: item.technologies || []
-          }));
-        } else {
-          // Add projects section if missing
-          newResume.sections.push({
-            id: 'projects',
-            title: 'Projects',
-            items: updates.projects.map(item => ({
-              id: 'proj-' + Math.random().toString(36).substr(2, 9),
-              title: item.title || 'Project',
-              subtitle: item.subtitle || 'Technologies',
-              description: item.description || '',
-              technologies: item.technologies || []
-            }))
-          });
-        }
+          };
+        });
+
+        console.log('[AI Resume] Generated', projSection.items.length, 'projects with proper bullets');
       }
 
       // 5. Update Education
@@ -349,6 +494,11 @@ GENERATE THE JSON NOW:`;
           });
         }
       }
+
+      // Final verification
+      const finalSkills = newResume.sections.find(s => s.id === 'skills');
+      console.log('[AI Resume] FINAL: Skills section:', finalSkills ? `${finalSkills.items?.length} items` : 'NOT FOUND');
+      console.log('[AI Resume] FINAL: All sections:', newResume.sections.map(s => ({ id: s.id, itemCount: s.items?.length })));
 
       return newResume;
 
@@ -562,12 +712,14 @@ ${linkedin ? `**LinkedIn:** ${linkedin} | ` : ''}${github ? `**GitHub:** ${githu
 
 ## CORE COMPETENCIES & TECHNICAL SKILLS
 
-[List 15-25 skills organized by relevant categories. PRIORITIZE skills from the job description first, then add complementary skills. Format as:
-**Programming Languages:** Skill1, Skill2, Skill3, Skill4
-**Frameworks & Libraries:** Skill5, Skill6, Skill7
-**Cloud & DevOps:** Skill8, Skill9, Skill10
-**Databases:** Skill11, Skill12
-**Tools & Platforms:** Skill13, Skill14, Skill15]
+**THIS SECTION IS REQUIRED - DO NOT SKIP**
+[You MUST list 15-25 skills organized by relevant categories. Extract ALL skills mentioned in the job description. Format as:]
+**Programming Languages:** [List 4-6 languages from job description or relevant to the role]
+**Frameworks & Libraries:** [List 4-6 frameworks/libraries mentioned or implied in job]
+**Cloud & DevOps:** [List 3-5 cloud/devops tools if mentioned]
+**Databases:** [List 2-4 database technologies if applicable]
+**Tools & Platforms:** [List 3-5 tools/platforms]
+**Soft Skills:** [List 3-5 soft skills like Leadership, Communication, Problem-solving if mentioned]
 
 ---
 
@@ -597,10 +749,21 @@ ${linkedin ? `**LinkedIn:** ${linkedin} | ` : ''}${github ? `**GitHub:** ${githu
 
 ## PROJECTS & CERTIFICATIONS
 
-[If the candidate's job experience is limited OR if projects would strengthen their candidacy, add 2-3 relevant projects:]
+**THIS SECTION IS REQUIRED - Generate 2-3 projects with 3-5 bullets EACH**
 
-**{Project Name}** | {Technologies matching job description}
-- [Concise description highlighting impact and technologies, demonstrating skills from job requirements]
+**{Project Name 1}** | {Technologies matching job description}
+- [Bullet 1: What you built and the problem it solved, with specific metrics or user impact]
+- [Bullet 2: Technical implementation details - specific technologies, architecture, frameworks used]
+- [Bullet 3: Key challenges overcome and solutions implemented]
+- [Bullet 4: Measurable results - users served, performance improvements, cost savings achieved]
+- [Bullet 5: Skills demonstrated that directly match the job requirements]
+
+**{Project Name 2}** | {Different technologies matching job description}
+- [Bullet 1: What you built and the problem it solved, with specific metrics or user impact]
+- [Bullet 2: Technical implementation details and architecture decisions]
+- [Bullet 3: How you overcame specific technical challenges]
+- [Bullet 4: Quantifiable outcomes and results]
+- [Bullet 5: Relevant skills and technologies demonstrated]
 
 [Add relevant certifications if they match job requirements or if commonly desired in this role]
 
@@ -641,100 +804,108 @@ CRITICAL: Output ONLY the resume markdown. Start immediately with "# ${name}". N
   }
 
   static parseResumeMarkdown(markdown, originalResume) {
-    // Helper to extract section content
+    console.log('[parseResumeMarkdown] Starting parse, markdown length:', markdown?.length);
+
+    // Helper to extract section content - FIXED REGEX
     const extractSection = (header) => {
-      const regex = new RegExp(`#{ 1, 3 } \\s * ${header} [\\s\\S] *? (?=#{ 1, 3 }| $)`, 'i');
+      const escapedHeader = header.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`#{1,3}\\s*${escapedHeader}[\\s\\S]*?(?=#{1,3}\\s|$)`, 'i');
       const match = markdown.match(regex);
-      return match ? match[0].replace(new RegExp(`#{ 1, 3 } \\s * ${header} `, 'i'), '').trim() : '';
+      if (match) {
+        const content = match[0].replace(/^#{1,3}\s*[^\n]+\n?/, '').trim();
+        console.log(`[parseResumeMarkdown] Extracted "${header}" section, length: ${content.length}`);
+        return content;
+      }
+      return '';
     };
 
     // Helper to parse bullets
     const parseBullets = (text) => {
       return text.split('\n')
         .filter(line => line.trim().startsWith('-') || line.trim().startsWith('*') || line.trim().startsWith('•'))
-        .map(line => line.replace(/^[-*•]\s*/, '').trim());
+        .map(line => line.replace(/^[-*•]\s*/, '').trim())
+        .filter(b => b.length > 0);
     };
 
-    const resume = JSON.parse(JSON.stringify(originalResume)); // Start with original to keep personal info safe if parsing fails
+    const resume = JSON.parse(JSON.stringify(originalResume));
 
-    // 1. Summary
-    const summaryText = extractSection('Summary') || extractSection('Professional Summary') || extractSection('Profile');
-    if (summaryText) {
-      const summarySection = resume.sections.find(s => s.id === 'summary');
-      if (summarySection) summarySection.content = summaryText;
+    if (!resume.sections) {
+      resume.sections = [];
     }
 
-    // 2. Skills
-    const skillsText = extractSection('Skills') || extractSection('Technical Skills') || extractSection('Core Competencies');
+    // 1. Summary
+    const summaryText = extractSection('PROFESSIONAL SUMMARY') || extractSection('Summary') || extractSection('Profile');
+    if (summaryText) {
+      let summarySection = resume.sections.find(s => s.id === 'summary');
+      if (!summarySection) {
+        summarySection = { id: 'summary', title: 'Professional Summary', content: '' };
+        resume.sections.push(summarySection);
+      }
+      const firstPara = summaryText.split(/\n\n|\n-|\n\*\*/)[0].trim();
+      summarySection.content = firstPara;
+    }
+
+    // 2. Skills - CRITICAL: Extract skills properly
+    const skillsText = extractSection('CORE COMPETENCIES') || extractSection('Technical Skills') || extractSection('Skills');
+    console.log('[parseResumeMarkdown] Skills text found:', skillsText?.substring(0, 200));
+
     if (skillsText) {
-      const skillsSection = resume.sections.find(s => s.id === 'skills');
-      if (skillsSection) {
-        // Parse skills - handle both categorized format and simple lists
-        const skills = [];
+      let skillsSection = resume.sections.find(s => s.id === 'skills');
+      if (!skillsSection) {
+        skillsSection = { id: 'skills', title: 'Skills', items: [] };
+        resume.sections.push(skillsSection);
+      }
 
-        // Split by newlines first
-        const lines = skillsText.split('\n');
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('-')) continue;
+      const skills = [];
+      const lines = skillsText.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        if (trimmed.includes('THIS SECTION IS REQUIRED') || trimmed.includes('DO NOT SKIP')) continue;
 
-          // Check if line has category (e.g., "**Programming Languages:** React, Node.js")
-          if (trimmed.includes(':')) {
-            // Extract skills after the colon
-            const afterColon = trimmed.split(':').slice(1).join(':').trim();
-            // Split by comma and clean up
-            const lineSkills = afterColon.split(',').map(s =>
-              s.trim()
-                .replace(/\*\*/g, '') // Remove markdown bold
-                .replace(/`/g, '')    // Remove code ticks
-                .trim()
-            ).filter(s => s.length > 0 && s.length < 50); // Reasonable skill name length
-            skills.push(...lineSkills);
-          } else {
-            // Simple comma-separated line
-            const lineSkills = trimmed.split(',').map(s =>
-              s.trim()
-                .replace(/\*\*/g, '')
-                .replace(/`/g, '')
-                .replace(/^[-•*]\s*/, '') // Remove bullet points
-                .trim()
-            ).filter(s => s.length > 0 && s.length < 50);
-            skills.push(...lineSkills);
+        if (trimmed.includes(':')) {
+          const afterColon = trimmed.split(':').slice(1).join(':').trim();
+          const lineSkills = afterColon.split(',').map(s =>
+            s.trim()
+              .replace(/\*\*/g, '')
+              .replace(/`/g, '')
+              .replace(/\[.*?\]/g, '')
+              .trim()
+          ).filter(s => s.length > 0 && s.length < 50 && !s.includes('['));
+          skills.push(...lineSkills);
+        } else if (trimmed.startsWith('-') || trimmed.startsWith('•')) {
+          const skill = trimmed.replace(/^[-•*]\s*/, '').replace(/\*\*/g, '').trim();
+          if (skill.length > 0 && skill.length < 50) {
+            skills.push(skill);
           }
+        } else {
+          const lineSkills = trimmed.split(',').map(s =>
+            s.trim()
+              .replace(/\*\*/g, '')
+              .replace(/`/g, '')
+              .replace(/^[-•*]\s*/, '')
+              .trim()
+          ).filter(s => s.length > 0 && s.length < 50);
+          skills.push(...lineSkills);
         }
+      }
 
-        // Remove duplicates and ensure all are strings
-        const uniqueSkills = [...new Set(skills)].filter(s => typeof s === 'string' && s.length > 0);
-        if (uniqueSkills.length > 0) {
-          skillsSection.items = uniqueSkills;
-        }
+      const uniqueSkills = [...new Set(skills)].filter(s => typeof s === 'string' && s.length > 0);
+      console.log('[parseResumeMarkdown] Parsed skills:', uniqueSkills.length, 'items:', uniqueSkills.slice(0, 5));
+
+      if (uniqueSkills.length > 0) {
+        skillsSection.items = uniqueSkills;
       }
     }
 
-    // 3. Experience (Complex parsing)
-    const experienceText = extractSection('Experience') || extractSection('Work Experience');
+    // 3. Experience
+    const experienceText = extractSection('PROFESSIONAL EXPERIENCE') || extractSection('Experience') || extractSection('Work Experience');
     if (experienceText) {
       const expSection = resume.sections.find(s => s.id === 'experience');
-      if (expSection) {
-        // Simple strategy: Look for lines with dates or bold text as headers
-        // This is tricky. Let's try to map back to original items if possible, or create new ones.
-        // For robustness, let's try to find the original companies in the text and update their bullets.
-
+      if (expSection && expSection.items) {
         expSection.items.forEach(item => {
-          // Find the block of text for this company
-          const companyRegex = new RegExp(`(.*? ${item.company}.*?)(?=\n.*?\\||\n.*?\\d{ 4} | $)`, 'is');
-          // This is too hard to regex perfectly.
-          // Alternative: Just ask AI for JSON? No, we want robust text.
-          // Let's just use the markdown text for the "Copy" feature, and for the PDF...
-          // For the PDF, we might just have to do our best or leave the original experience if parsing fails.
-
-          // Let's try a simpler approach: Split by double newlines and look for keywords.
-          // Actually, for the PDF, if we can't parse perfectly, we might just want to put the whole text block in? No, structure is needed.
-
-          // Let's try to find the company name in the markdown
           const companyIndex = experienceText.indexOf(item.company);
           if (companyIndex !== -1) {
-            // Look ahead for bullets until the next double newline or header
             const slice = experienceText.substring(companyIndex);
             const endOfBlock = slice.search(/\n\n|#{1,3}/);
             const block = slice.substring(0, endOfBlock === -1 ? slice.length : endOfBlock);
@@ -745,8 +916,8 @@ CRITICAL: Output ONLY the resume markdown. Start immediately with "# ${name}". N
       }
     }
 
-    // 4. Projects (New Parsing Logic)
-    const projectsText = extractSection('Projects') || extractSection('Projects & Certifications');
+    // 4. Projects
+    const projectsText = extractSection('PROJECTS') || extractSection('Projects & Certifications');
     if (projectsText) {
       let projectsSection = resume.sections.find(s => s.id === 'projects');
       if (!projectsSection) {
@@ -761,10 +932,10 @@ CRITICAL: Output ONLY the resume markdown. Start immediately with "# ${name}". N
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('---')) continue;
+        if (trimmed.includes('THIS SECTION IS REQUIRED')) continue;
 
         if (trimmed.startsWith('**')) {
-          if (currentProject) projects.push(currentProject);
-          // Parse "**Project Name** | Tech"
+          if (currentProject && currentProject.bullets.length > 0) projects.push(currentProject);
           const parts = trimmed.split('|');
           const title = parts[0].replace(/\*\*/g, '').trim();
           const techString = parts[1] ? parts[1].trim() : '';
@@ -772,28 +943,29 @@ CRITICAL: Output ONLY the resume markdown. Start immediately with "# ${name}". N
 
           currentProject = {
             title,
-            subtitle: techString, // Store tech in subtitle for display
+            subtitle: techString,
             technologies,
             description: '',
             bullets: []
           };
-        } else if (trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) {
-          if (currentProject) {
-            const bullet = trimmed.replace(/^[-•*]\s*/, '').trim();
+        } else if ((trimmed.startsWith('-') || trimmed.startsWith('•') || trimmed.startsWith('*')) && currentProject) {
+          const bullet = trimmed.replace(/^[-•*]\s*/, '').trim();
+          if (bullet.length > 0 && !bullet.includes('Bullet')) {
             currentProject.bullets.push(bullet);
-            // Use first bullet as description if empty
             if (!currentProject.description) currentProject.description = bullet;
           }
         }
       }
-      if (currentProject) projects.push(currentProject);
+      if (currentProject && currentProject.bullets.length > 0) projects.push(currentProject);
+
+      console.log('[parseResumeMarkdown] Parsed projects:', projects.length, 'with bullets:', projects.map(p => p.bullets.length));
 
       if (projects.length > 0) {
         projectsSection.items = projects;
       }
     }
 
-    // 5. Education (New Parsing Logic)
+    // 5. Education
     const educationText = extractSection('Education');
     if (educationText) {
       const eduSection = resume.sections.find(s => s.id === 'education');
@@ -801,7 +973,6 @@ CRITICAL: Output ONLY the resume markdown. Start immediately with "# ${name}". N
         const educations = [];
         const lines = educationText.split('\n');
 
-        // Simple parser for "**Degree** | **School** | Year" format
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed.startsWith('**') && trimmed.includes('|')) {
@@ -826,3 +997,4 @@ CRITICAL: Output ONLY the resume markdown. Start immediately with "# ${name}". N
     return { parsedResume: resume, markdown: markdown };
   }
 }
+

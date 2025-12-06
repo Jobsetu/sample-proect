@@ -76,6 +76,8 @@ const SectionCard = ({ section, index, register, remove, move, control, isFirst,
         <SkillsSection index={index} control={control} register={register} />
       ) : section.id === 'experience' ? (
         <ExperienceSection index={index} control={control} register={register} />
+      ) : section.id === 'projects' ? (
+        <ProjectsSection index={index} control={control} register={register} />
       ) : (
         <GenericSection index={index} control={control} register={register} />
       )}
@@ -102,7 +104,7 @@ const SkillsSection = ({ index, control, register }) => {
           <Plus className="w-3 h-3" /> Add Skill
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex flex-col gap-2">
         {fields.map((f, i) => (
           <div key={f.id} className="flex gap-2 group">
             <input
@@ -179,6 +181,66 @@ const ExperienceSection = ({ index, control, register }) => {
             <div className="mt-3 pt-3 border-t border-slate-200 flex justify-end">
               <button type="button" className="text-red-500 text-xs hover:text-red-700 flex items-center gap-1" onClick={() => remove(i)}>
                 <Trash2 className="w-3 h-3" /> Delete Role
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+const ProjectsSection = ({ index, control, register }) => {
+  const { fields, append, remove } = useFieldArray({ control, name: `sections.${index}.items` })
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          className="text-blue-600 text-sm font-medium hover:text-blue-700 flex items-center gap-1"
+          onClick={() => append({ title: '', subtitle: '', description: '', bullets: [] })}
+        >
+          <Plus className="w-3 h-3" /> Add Project
+        </button>
+      </div>
+      {fields.map((f, i) => {
+        const bullets = useFieldArray({ control, name: `sections.${index}.items.${i}.bullets` })
+        return (
+          <div key={f.id} className="border border-slate-200 rounded-lg p-4 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+            <div className="grid gap-3 mb-3">
+              <input placeholder="Project Title" {...register(`sections.${index}.items.${i}.title`)} className="border border-slate-200 rounded-md p-2 text-slate-800 text-sm font-medium" />
+              <input placeholder="Technologies Used" {...register(`sections.${index}.items.${i}.subtitle`)} className="border border-slate-200 rounded-md p-2 text-slate-800 text-sm" />
+              <textarea placeholder="Brief Description" {...register(`sections.${index}.items.${i}.description`)} className="border border-slate-200 rounded-md p-2 text-slate-800 text-sm" rows={2} />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Accomplishments</label>
+                <button type="button" className="text-blue-600 text-xs hover:text-blue-700" onClick={() => bullets.append('')}>+ Add Bullet</button>
+              </div>
+              {bullets.fields.map((bf, bi) => (
+                <div key={bf.id} className="flex gap-2 group">
+                  <div className="mt-2 w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+                  <textarea
+                    {...register(`sections.${index}.items.${i}.bullets.${bi}`)}
+                    className="flex-1 border-b border-transparent hover:border-slate-200 focus:border-blue-500 bg-transparent outline-none text-sm py-1 resize-none"
+                    rows={1}
+                    style={{ minHeight: '2rem' }}
+                    onInput={(e) => {
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                  />
+                  <button type="button" className="text-slate-400 hover:text-red-600 opacity-0 group-hover:opacity-100" onClick={() => bullets.remove(bi)}>
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 pt-3 border-t border-slate-200 flex justify-end">
+              <button type="button" className="text-red-500 text-xs hover:text-red-700 flex items-center gap-1" onClick={() => remove(i)}>
+                <Trash2 className="w-3 h-3" /> Delete Project
               </button>
             </div>
           </div>
@@ -281,7 +343,7 @@ const EditorPanel = () => {
       color: '#000000',
       spacing: 1.2
     },
-    mode: 'onBlur'
+    mode: 'onChange'  // Changed from 'onBlur' for real-time preview updates
   })
   const { control, handleSubmit, register, watch, reset } = methods
 
@@ -291,20 +353,14 @@ const EditorPanel = () => {
     name: "sections"
   })
 
-  const values = watch()
-
-  useMemo(() => {
-    if (JSON.stringify(values) !== JSON.stringify(resume)) {
-      const hasValues = values.personalInfo?.name || (values.sections && values.sections.length > 0);
-      const storeHasData = resume?.personalInfo?.name || (resume?.sections && resume.sections.length > 0);
-
-      if (hasValues) {
-        setResume(values)
-      } else if (!storeHasData) {
-        // Both empty, fine to sync
-      }
-    }
-  }, [values, setResume, resume])
+  // Sync form values to store for live preview
+  useEffect(() => {
+    const subscription = watch((value) => {
+      console.log('[EditorPanel] Watch triggered, syncing to store');
+      setResume(value);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch, setResume]);
 
   // Force reset ONLY when store changes externally (not driven by form)
   // We'll handle explicit resets in AI handlers. 
@@ -362,7 +418,40 @@ const EditorPanel = () => {
     setAiSuccess(false)
     try {
       const tailoredData = await GeminiService.generateCustomResume(description, resume)
-      setResume(tailoredData)
+      console.log('[handleAiWrite] Raw AI data sections:', tailoredData.sections?.map(s => ({ id: s.id, itemsCount: s.items?.length })));
+
+      // Find skills in raw data
+      const rawSkills = tailoredData.sections?.find(s => s.id === 'skills');
+      console.log('[handleAiWrite] Raw skills section:', rawSkills);
+
+      // CRITICAL: Sanitize the AI data before updating form
+      const sanitized = JSON.parse(JSON.stringify(tailoredData));
+      if (sanitized.sections) {
+        sanitized.sections.forEach(section => {
+          // Fix object content in Summary
+          if (section.content && typeof section.content === 'object') {
+            section.content = section.content.content || '';
+          }
+          // Fix object items in Skills - ENSURE STRINGS!
+          if (section.id === 'skills' && Array.isArray(section.items)) {
+            console.log('[handleAiWrite] BEFORE sanitization, skills.items:', section.items);
+            section.items = section.items.map(item => {
+              if (typeof item === 'object' && item !== null) {
+                return item.name || item.label || item.value || String(item);
+              }
+              return String(item); // Force string conversion
+            }).filter(Boolean);
+            console.log('[handleAiWrite] AFTER sanitization, skills.items:', section.items);
+          }
+        });
+      }
+
+      // Verify final skills
+      const finalSkills = sanitized.sections?.find(s => s.id === 'skills');
+      console.log('[handleAiWrite] FINAL sanitized skills:', finalSkills);
+
+      setResume(sanitized)
+      reset(sanitized) // Reset form with sanitized data!
       setAiSuccess(true)
       setTimeout(() => {
         setShowAiModal(false)
@@ -515,6 +604,13 @@ const EditorPanel = () => {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => setShowAiModal(true)}
+            className="px-3 py-2 bg-indigo-600 text-white text-sm rounded-md hover:bg-indigo-700 transition-colors flex items-center gap-2 shadow-sm"
+          >
+            <Sparkles className="w-3 h-3" />
+            Write with AI
+          </button>
+          <button
             onClick={handleGenerateCoverLetter}
             disabled={generatingCoverLetter}
             className="px-3 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
@@ -525,14 +621,54 @@ const EditorPanel = () => {
         </div>
       </div>
 
-      {/* AI Write Modal (Hidden/Removed access but kept component if state triggers) */}
-      {
-        showAiModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            {/* Modal content kept for safety but button removed */}
+      {/* AI Write Modal */}
+      {showAiModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl p-6">
+            <h3 className="font-bold text-lg text-slate-800 mb-4">Tailor Resume to Job</h3>
+            <p className="text-sm text-slate-500 mb-4">Paste the job description below. The AI will rewrite your resume to match the keywords and requirements.</p>
+
+            {aiSuccess ? (
+              <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center gap-3 mb-4">
+                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="font-medium">Resume Optimized!</p>
+                  <p className="text-xs opacity-80">Skills, summary, and bullets updated.</p>
+                </div>
+              </div>
+            ) : (
+              <textarea
+                value={aiJobDescription}
+                onChange={(e) => setAiJobDescription(e.target.value)}
+                placeholder="Paste job description here..."
+                className="w-full h-40 border border-slate-200 rounded-lg p-3 text-sm mb-4 focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                autoFocus
+              />
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowAiModal(false)}
+                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm"
+              >
+                Cancel
+              </button>
+              {!aiSuccess && (
+                <button
+                  onClick={handleAiWrite}
+                  disabled={isWriting || !aiJobDescription.trim()}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isWriting ? <Loader className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  {isWriting ? 'Optimizing...' : 'Generate Resume'}
+                </button>
+              )}
+            </div>
           </div>
-        )
-      }
+        </div>
+      )}
 
       {
         coverLetter && (

@@ -389,6 +389,11 @@ def generate_resume():
                                     print(f"[SANITIZER-GEN] Skills cleaned. Original count: {len(original_items)}, New count: {len(cleaned)}")
                                     section['items'] = cleaned
                         
+                        # Log flat structure for debugging
+                        print(f"[RESUME] Parsed JSON keys: {list(gen_json.keys())}")
+                        if 'skills' in gen_json:
+                            print(f"[RESUME] Skills found at top level: {len(gen_json['skills'])} items - {gen_json['skills'][:3]}...")
+                        
                         text_output = json.dumps(gen_json)
                         is_valid_json = True
                         print("[RESUME] JSON validation successful (robust extraction)")
